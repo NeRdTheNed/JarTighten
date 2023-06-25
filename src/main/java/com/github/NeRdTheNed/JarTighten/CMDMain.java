@@ -22,6 +22,15 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--exclude", "-e" }, description = "Files to exclude from optimisations which might hide them from standard zip libraries")
     List<String> excludes;
 
+    @Option(names = { "--remove-timestamps", "-t" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove timestamps")
+    boolean removeTimestamps = true;
+
+    @Option(names = { "--remove-file-length", "-l" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove file length from local file headers")
+    boolean removeFileLength = true;
+
+    @Option(names = { "--remove-file-names", "-n" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove file names from local file headers")
+    boolean removeFileNames = true;
+
     @Override
     public Integer call() throws Exception {
         if (!inputFile.toFile().isFile()) {
@@ -32,7 +41,7 @@ public class CMDMain implements Callable<Integer> {
             throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        return !JarTighten.optimiseJar(inputFile, outputFile, excludes != null ? excludes : new ArrayList<String>()) ? 1 : CommandLine.ExitCode.OK;
+        return !JarTighten.optimiseJar(inputFile, outputFile, excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames) ? 1 : CommandLine.ExitCode.OK;
     }
 
     public static void main(String[] args) {

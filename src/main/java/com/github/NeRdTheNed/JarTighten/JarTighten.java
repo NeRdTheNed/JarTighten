@@ -16,13 +16,8 @@ import software.coley.llzip.format.model.ZipArchive;
 import software.coley.llzip.util.ByteDataUtil;
 
 public class JarTighten {
-    private static final boolean REMOVE_TIMESTAMPS = true;
     private static final int EARLIEST_TIME = 0x6020;
     private static final int EARLIEST_DATE = 0x0021;
-
-    private static final boolean REMOVE_LOCAL_FILE_LENGTH = true;
-
-    private static final boolean REMOVE_LOCAL_FILE_NAMES = true;
 
     private static void writeShortLE(OutputStream out, int value) throws IOException {
         out.write(value & 0xFF);
@@ -37,7 +32,7 @@ public class JarTighten {
     }
 
     // TODO Optimisation, currently just copies input
-    public static boolean optimiseJar(Path input, Path output, List<String> excludes) throws IOException {
+    public static boolean optimiseJar(Path input, Path output, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames) throws IOException {
         final ZipArchive archive = ZipIO.readJvm(input);
 
         try
@@ -65,23 +60,23 @@ public class JarTighten {
                 // Compression method
                 writeShortLE(outputStream, fileHeader.getCompressionMethod());
                 // Last modification time
-                final int lastModFileTime = REMOVE_TIMESTAMPS ? EARLIEST_TIME : fileHeader.getLastModFileTime();
+                final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : fileHeader.getLastModFileTime();
                 writeShortLE(outputStream, lastModFileTime);
                 // Last modification date
-                final int lastModFileDate = REMOVE_TIMESTAMPS ? EARLIEST_DATE : fileHeader.getLastModFileDate();
+                final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : fileHeader.getLastModFileDate();
                 writeShortLE(outputStream, lastModFileDate);
                 // CRC32
                 writeIntLE(outputStream, crc32);
                 // Compressed size
-                final int localCompressedSize = (REMOVE_LOCAL_FILE_LENGTH && !exclude) ? 0 : realCompressedSize;
+                final int localCompressedSize = (removeFileLength && !exclude) ? 0 : realCompressedSize;
                 writeIntLE(outputStream, localCompressedSize);
                 // Uncompressed size
-                final int localUncompressedSize = (REMOVE_LOCAL_FILE_LENGTH && !exclude) ? 0 : realUncompressedSize;
+                final int localUncompressedSize = (removeFileLength && !exclude) ? 0 : realUncompressedSize;
                 writeIntLE(outputStream, localUncompressedSize);
                 // File name optimisation
                 final boolean isManifest = fileHeader.getFileNameAsString().contains("MANIFEST");
-                final int fileNameLength = (REMOVE_LOCAL_FILE_NAMES && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
-                final byte[] fileName = (REMOVE_LOCAL_FILE_NAMES && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
+                final int fileNameLength = (removeFileNames && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
+                final byte[] fileName = (removeFileNames && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
                 // File name length
                 writeShortLE(outputStream, fileNameLength);
                 // Extra field length
@@ -123,10 +118,10 @@ public class JarTighten {
                 // Compression method
                 writeShortLE(outputStream, centralDir.getCompressionMethod());
                 // Last modification time
-                final int lastModFileTime = REMOVE_TIMESTAMPS ? EARLIEST_TIME : centralDir.getLastModFileTime();
+                final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : centralDir.getLastModFileTime();
                 writeShortLE(outputStream, lastModFileTime);
                 // Last modification date
-                final int lastModFileDate = REMOVE_TIMESTAMPS ? EARLIEST_DATE : centralDir.getLastModFileDate();
+                final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : centralDir.getLastModFileDate();
                 writeShortLE(outputStream, lastModFileDate);
                 // CRC32
                 writeIntLE(outputStream, centralDir.getCrc32());
