@@ -14,6 +14,10 @@ import software.coley.llzip.format.model.ZipArchive;
 import software.coley.llzip.util.ByteDataUtil;
 
 public class JarTighten {
+    private static final boolean REMOVE_TIMESTAMPS = true;
+    private static final int EARLIEST_TIME = 0x6020;
+    private static final int EARLIEST_DATE = 0x0021;
+
     private static void writeShortLE(OutputStream out, int value) throws IOException {
         out.write(value & 0xFF);
         out.write((value >> 8) & 0xFF);
@@ -43,9 +47,11 @@ public class JarTighten {
                 // Compression method
                 writeShortLE(outputStream, fileHeader.getCompressionMethod());
                 // Last modification time
-                writeShortLE(outputStream, fileHeader.getLastModFileTime());
+                final int lastModFileTime = REMOVE_TIMESTAMPS ? EARLIEST_TIME : fileHeader.getLastModFileTime();
+                writeShortLE(outputStream, lastModFileTime);
                 // Last modification date
-                writeShortLE(outputStream, fileHeader.getLastModFileDate());
+                final int lastModFileDate = REMOVE_TIMESTAMPS ? EARLIEST_DATE : fileHeader.getLastModFileDate();
+                writeShortLE(outputStream, lastModFileDate);
                 // CRC32
                 writeIntLE(outputStream, fileHeader.getCrc32());
                 // Compressed size
@@ -81,9 +87,11 @@ public class JarTighten {
                 // Compression method
                 writeShortLE(outputStream, centralDir.getCompressionMethod());
                 // Last modification time
-                writeShortLE(outputStream, centralDir.getLastModFileTime());
+                final int lastModFileTime = REMOVE_TIMESTAMPS ? EARLIEST_TIME : centralDir.getLastModFileTime();
+                writeShortLE(outputStream, lastModFileTime);
                 // Last modification date
-                writeShortLE(outputStream, centralDir.getLastModFileDate());
+                final int lastModFileDate = REMOVE_TIMESTAMPS ? EARLIEST_DATE : centralDir.getLastModFileDate();
+                writeShortLE(outputStream, lastModFileDate);
                 // CRC32
                 writeIntLE(outputStream, centralDir.getCrc32());
                 // Compressed size
