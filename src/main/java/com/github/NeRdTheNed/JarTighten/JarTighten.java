@@ -21,6 +21,8 @@ public class JarTighten {
 
     private static final boolean REMOVE_LOCAL_FILE_LENGTH = true;
 
+    private static final boolean REMOVE_LOCAL_FILE_NAMES = true;
+
     private static void writeShortLE(OutputStream out, int value) throws IOException {
         out.write(value & 0xFF);
         out.write((value >> 8) & 0xFF);
@@ -74,14 +76,16 @@ public class JarTighten {
                 // Uncompressed size
                 final int localUncompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : realUncompressedSize;
                 writeIntLE(outputStream, localUncompressedSize);
+                // File name optimisation
+                final boolean isManifest = fileHeader.getFileNameAsString().contains("MANIFEST");
+                final int fileNameLength = (REMOVE_LOCAL_FILE_NAMES && !isManifest) ? 0 : fileHeader.getFileNameLength();
+                final byte[] fileName = (REMOVE_LOCAL_FILE_NAMES && !isManifest) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
                 // File name length
-                final int fileNameLength = fileHeader.getFileNameLength();
                 writeShortLE(outputStream, fileNameLength);
                 // Extra field length
                 final int extraFieldLength = fileHeader.getExtraFieldLength();
                 writeShortLE(outputStream, extraFieldLength);
                 // File name
-                final byte[] fileName = ByteDataUtil.toByteArray(fileHeader.getFileName());
                 outputStream.write(fileName);
                 // Extra field
                 final byte[] extra = ByteDataUtil.toByteArray(fileHeader.getExtraField());
