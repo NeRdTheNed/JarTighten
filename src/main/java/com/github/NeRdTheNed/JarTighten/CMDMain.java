@@ -1,6 +1,7 @@
 package com.github.NeRdTheNed.JarTighten;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -31,7 +32,7 @@ public class CMDMain implements Callable<Integer> {
             throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        return !JarTighten.optimiseJar(inputFile, outputFile, excludes) ? 1 : CommandLine.ExitCode.OK;
+        return !JarTighten.optimiseJar(inputFile, outputFile, excludes != null ? excludes : new ArrayList<String>()) ? 1 : CommandLine.ExitCode.OK;
     }
 
     public static void main(String[] args) {
