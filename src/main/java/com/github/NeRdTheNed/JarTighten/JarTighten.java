@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.util.HashMap;
 
 import software.coley.llzip.ZipIO;
 import software.coley.llzip.format.ZipPatterns;
@@ -38,8 +39,19 @@ public class JarTighten {
 
         try
             (FileOutputStream outputStream = new FileOutputStream(output.toFile())) {
+            final HashMap<Integer, Integer> crcToOffset = new HashMap<>();
+            int offset = 0;
+
             // Local file headers:
             for (final LocalFileHeader fileHeader : archive.getLocalFiles()) {
+                final int crc32 = fileHeader.getCrc32();
+                final int realCompressedSize = (int) fileHeader.getCompressedSize();
+                final int realUncompressedSize = (int) fileHeader.getUncompressedSize();
+
+                if ((realUncompressedSize == 0) || crcToOffset.containsKey(crc32)) {
+                    continue;
+                }
+
                 // Header
                 writeIntLE(outputStream, ZipPatterns.LOCAL_FILE_HEADER_QUAD);
                 // Minimum version
@@ -55,17 +67,19 @@ public class JarTighten {
                 final int lastModFileDate = REMOVE_TIMESTAMPS ? EARLIEST_DATE : fileHeader.getLastModFileDate();
                 writeShortLE(outputStream, lastModFileDate);
                 // CRC32
-                writeIntLE(outputStream, fileHeader.getCrc32());
+                writeIntLE(outputStream, crc32);
                 // Compressed size
-                final int localCompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : (int) fileHeader.getCompressedSize();
+                final int localCompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : realCompressedSize;
                 writeIntLE(outputStream, localCompressedSize);
                 // Uncompressed size
-                final int localUncompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : (int) fileHeader.getUncompressedSize();
+                final int localUncompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : realUncompressedSize;
                 writeIntLE(outputStream, localUncompressedSize);
                 // File name length
-                writeShortLE(outputStream, fileHeader.getFileNameLength());
+                final int fileNameLength = fileHeader.getFileNameLength();
+                writeShortLE(outputStream, fileNameLength);
                 // Extra field length
-                writeShortLE(outputStream, fileHeader.getExtraFieldLength());
+                final int extraFieldLength = fileHeader.getExtraFieldLength();
+                writeShortLE(outputStream, extraFieldLength);
                 // File name
                 final byte[] fileName = ByteDataUtil.toByteArray(fileHeader.getFileName());
                 outputStream.write(fileName);
@@ -75,11 +89,23 @@ public class JarTighten {
                 // Compressed data
                 // TODO This feels wrong?
                 final byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
-                outputStream.write(fileData, 0, (int) fileHeader.getCompressedSize());
+                outputStream.write(fileData, 0, realCompressedSize);
+                crcToOffset.put(crc32, offset);
+                offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
             }
+
+            final int startCentral = offset;
+            int centralEntries = 0;
 
             // Central directory file headers:
             for (final CentralDirectoryFileHeader centralDir : archive.getCentralDirectories()) {
+                final int crc32 = centralDir.getCrc32();
+                final int uncompressedSize = (int) centralDir.getUncompressedSize();
+
+                if ((uncompressedSize == 0) || !crcToOffset.containsKey(crc32)) {
+                    continue;
+                }
+
                 // Header
                 writeIntLE(outputStream, ZipPatterns.CENTRAL_DIRECTORY_FILE_HEADER_QUAD);
                 // Made by
@@ -101,13 +127,16 @@ public class JarTighten {
                 // Compressed size
                 writeIntLE(outputStream, (int) centralDir.getCompressedSize());
                 // Uncompressed size
-                writeIntLE(outputStream, (int) centralDir.getUncompressedSize());
+                writeIntLE(outputStream, uncompressedSize);
                 // File name length
-                writeShortLE(outputStream, centralDir.getFileNameLength());
+                final int fileNameLength = centralDir.getFileNameLength();
+                writeShortLE(outputStream, fileNameLength);
                 // Extra field length
-                writeShortLE(outputStream, centralDir.getExtraFieldLength());
+                final int extraFieldLength = centralDir.getExtraFieldLength();
+                writeShortLE(outputStream, extraFieldLength);
                 // File comment length
-                writeShortLE(outputStream, centralDir.getFileCommentLength());
+                final int fileCommentLength = centralDir.getFileCommentLength();
+                writeShortLE(outputStream, fileCommentLength);
                 // Disk number where file starts
                 writeShortLE(outputStream, centralDir.getDiskNumberStart());
                 // Internal file attributes
@@ -115,7 +144,7 @@ public class JarTighten {
                 // External file attributes
                 writeIntLE(outputStream, centralDir.getExternalFileAttributes());
                 // Relative offset of local file header
-                writeIntLE(outputStream, (int) centralDir.getRelativeOffsetOfLocalHeader());
+                writeIntLE(outputStream, crcToOffset.get(crc32));
                 // File name
                 final byte[] fileName = ByteDataUtil.toByteArray(centralDir.getFileName());
                 outputStream.write(fileName);
@@ -125,6 +154,8 @@ public class JarTighten {
                 // File comment
                 final byte[] fileComment = ByteDataUtil.toByteArray(centralDir.getFileComment());
                 outputStream.write(fileComment);
+                centralEntries++;
+                offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
             }
 
             // End of central directory record:
@@ -138,11 +169,11 @@ public class JarTighten {
             // TODO What is this?
             writeShortLE(outputStream, end.getCentralDirectoryStartOffset());
             // Central directory entries
-            writeShortLE(outputStream, end.getNumEntries());
+            writeShortLE(outputStream, centralEntries);
             // Central directory size
-            writeIntLE(outputStream, (int) end.getCentralDirectorySize());
+            writeIntLE(outputStream, offset - startCentral);
             // Central directory offset
-            writeIntLE(outputStream, (int) end.getCentralDirectoryOffset());
+            writeIntLE(outputStream, startCentral);
             // Comment length
             writeShortLE(outputStream, end.getZipCommentLength());
             // Comment
