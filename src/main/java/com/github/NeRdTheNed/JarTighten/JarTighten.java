@@ -18,6 +18,8 @@ public class JarTighten {
     private static final int EARLIEST_TIME = 0x6020;
     private static final int EARLIEST_DATE = 0x0021;
 
+    private static final boolean REMOVE_LOCAL_FILE_LENGTH = true;
+
     private static void writeShortLE(OutputStream out, int value) throws IOException {
         out.write(value & 0xFF);
         out.write((value >> 8) & 0xFF);
@@ -55,9 +57,11 @@ public class JarTighten {
                 // CRC32
                 writeIntLE(outputStream, fileHeader.getCrc32());
                 // Compressed size
-                writeIntLE(outputStream, (int) fileHeader.getCompressedSize());
+                final int localCompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : (int) fileHeader.getCompressedSize();
+                writeIntLE(outputStream, localCompressedSize);
                 // Uncompressed size
-                writeIntLE(outputStream, (int) fileHeader.getUncompressedSize());
+                final int localUncompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : (int) fileHeader.getUncompressedSize();
+                writeIntLE(outputStream, localUncompressedSize);
                 // File name length
                 writeShortLE(outputStream, fileHeader.getFileNameLength());
                 // Extra field length
