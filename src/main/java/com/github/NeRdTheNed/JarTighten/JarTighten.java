@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 
 import software.coley.llzip.ZipIO;
 import software.coley.llzip.format.ZipPatterns;
@@ -36,7 +37,7 @@ public class JarTighten {
     }
 
     // TODO Optimisation, currently just copies input
-    public static boolean optimiseJar(Path input, Path output) throws IOException {
+    public static boolean optimiseJar(Path input, Path output, List<String> excludes) throws IOException {
         final ZipArchive archive = ZipIO.readJvm(input);
 
         try
@@ -54,6 +55,7 @@ public class JarTighten {
                     continue;
                 }
 
+                final boolean exclude = excludes.contains(fileHeader.getFileNameAsString());
                 // Header
                 writeIntLE(outputStream, ZipPatterns.LOCAL_FILE_HEADER_QUAD);
                 // Minimum version
@@ -71,15 +73,15 @@ public class JarTighten {
                 // CRC32
                 writeIntLE(outputStream, crc32);
                 // Compressed size
-                final int localCompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : realCompressedSize;
+                final int localCompressedSize = (REMOVE_LOCAL_FILE_LENGTH && !exclude) ? 0 : realCompressedSize;
                 writeIntLE(outputStream, localCompressedSize);
                 // Uncompressed size
-                final int localUncompressedSize = REMOVE_LOCAL_FILE_LENGTH ? 0 : realUncompressedSize;
+                final int localUncompressedSize = (REMOVE_LOCAL_FILE_LENGTH && !exclude) ? 0 : realUncompressedSize;
                 writeIntLE(outputStream, localUncompressedSize);
                 // File name optimisation
                 final boolean isManifest = fileHeader.getFileNameAsString().contains("MANIFEST");
-                final int fileNameLength = (REMOVE_LOCAL_FILE_NAMES && !isManifest) ? 0 : fileHeader.getFileNameLength();
-                final byte[] fileName = (REMOVE_LOCAL_FILE_NAMES && !isManifest) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
+                final int fileNameLength = (REMOVE_LOCAL_FILE_NAMES && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
+                final byte[] fileName = (REMOVE_LOCAL_FILE_NAMES && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
                 // File name length
                 writeShortLE(outputStream, fileNameLength);
                 // Extra field length
