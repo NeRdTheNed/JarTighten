@@ -28,3 +28,4 @@ jobs:
           path: |
             JarTighten/build/libs
             JarTighten-lib/build/libs
+            JarTighten-plugin/build/libs

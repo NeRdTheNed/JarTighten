@@ -1,2 +1,2 @@
 rootProject.name = 'JarTighten-base'
-include('JarTighten-lib', 'JarTighten')
+include('JarTighten-lib', 'JarTighten-plugin', 'JarTighten')
