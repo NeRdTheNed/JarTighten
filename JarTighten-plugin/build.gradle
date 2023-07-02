@@ -8,6 +8,7 @@ plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'com.gradle.plugin-publish' version '1.1.0'
 }
 
 apply plugin: 'java'
@@ -47,7 +48,7 @@ repositories {
 shadowJar {
     minimize()
 
-    archiveClassifier = 'all'
+    archiveClassifier = ''
 }
 
 dependencies {
@@ -64,5 +65,3 @@ gradlePlugin {
         }
     }
 }
-
-build.finalizedBy(shadowJar)
