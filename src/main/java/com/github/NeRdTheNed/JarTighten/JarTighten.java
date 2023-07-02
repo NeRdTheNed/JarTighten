@@ -1,5 +1,6 @@
 package com.github.NeRdTheNed.JarTighten;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -7,8 +8,14 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 
+import ru.eustas.zopfli.Options;
+import ru.eustas.zopfli.Options.BlockSplitting;
+import ru.eustas.zopfli.Options.OutputFormat;
+import ru.eustas.zopfli.Zopfli;
 import software.coley.llzip.ZipIO;
 import software.coley.llzip.format.ZipPatterns;
+import software.coley.llzip.format.compression.DeflateDecompressor;
+import software.coley.llzip.format.compression.ZipCompressions;
 import software.coley.llzip.format.model.CentralDirectoryFileHeader;
 import software.coley.llzip.format.model.EndOfCentralDirectory;
 import software.coley.llzip.format.model.LocalFileHeader;
@@ -48,7 +55,8 @@ public class JarTighten {
     }
 
     // TODO Optimisation, currently just copies input
-    public static boolean optimiseJar(Path input, Path output, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames) throws IOException {
+    public static boolean optimiseJar(Path input, Path output, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompress) throws IOException {
+        final DeflateDecompressor decomp = new DeflateDecompressor();
         final ZipArchive archive = ZipIO.readJvm(input);
 
         try
@@ -59,11 +67,35 @@ public class JarTighten {
             // Local file headers:
             for (final LocalFileHeader fileHeader : archive.getLocalFiles()) {
                 final int crc32 = fileHeader.getCrc32();
-                final int realCompressedSize = (int) fileHeader.getCompressedSize();
+                int realCompressedSize = (int) fileHeader.getCompressedSize();
                 final int realUncompressedSize = (int) fileHeader.getUncompressedSize();
 
                 if ((realUncompressedSize == 0) || crcToEntryData.containsKey(crc32)) {
                     continue;
+                }
+
+                final int compressionMethod = fileHeader.getCompressionMethod();
+                byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
+
+                if (recompress && (compressionMethod == ZipCompressions.DEFLATED)) {
+                    try {
+                        final byte[] uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
+                        // TODO Option customization
+                        final Zopfli compressor = new Zopfli(8 << 20);
+                        final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
+                        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        compressor.compress(options, uncompressedData, bos);
+                        final byte[] zopfliCompressedData = bos.toByteArray();
+
+                        // TODO Verify data integrity
+
+                        if (zopfliCompressedData.length < realCompressedSize) {
+                            fileData = zopfliCompressedData;
+                            realCompressedSize = zopfliCompressedData.length;
+                        }
+                    } catch (final Exception e) {
+                        // Ignored
+                    }
                 }
 
                 final boolean exclude = excludes.contains(fileHeader.getFileNameAsString());
@@ -74,7 +106,6 @@ public class JarTighten {
                 // General purpose bit flag
                 writeShortLE(outputStream, fileHeader.getGeneralPurposeBitFlag());
                 // Compression method
-                final int compressionMethod = fileHeader.getCompressionMethod();
                 writeShortLE(outputStream, compressionMethod);
                 // Last modification time
                 final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : fileHeader.getLastModFileTime();
@@ -106,7 +137,6 @@ public class JarTighten {
                 outputStream.write(extra);
                 // Compressed data
                 // TODO This feels wrong?
-                final byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
                 outputStream.write(fileData, 0, realCompressedSize);
                 final EntryData entryData = new EntryData(crc32, realUncompressedSize, realCompressedSize, compressionMethod, offset);
                 crcToEntryData.put(crc32, entryData);

@@ -31,6 +31,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--remove-file-names", "-n" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove file names from local file headers")
     boolean removeFileNames = true;
 
+    @Option(names = { "--recompress", "-r" }, defaultValue = "false", description = "Recompress files with CafeUndZopfli")
+    boolean recompress = false;
+
     @Override
     public Integer call() throws Exception {
         if (!inputFile.toFile().isFile()) {
@@ -41,7 +44,7 @@ public class CMDMain implements Callable<Integer> {
             throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        return !JarTighten.optimiseJar(inputFile, outputFile, excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames) ? 1 : CommandLine.ExitCode.OK;
+        return !JarTighten.optimiseJar(inputFile, outputFile, excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompress) ? 1 : CommandLine.ExitCode.OK;
     }
 
     public static void main(String[] args) {
