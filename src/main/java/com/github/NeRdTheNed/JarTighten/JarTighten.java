@@ -16,6 +16,22 @@ import software.coley.llzip.format.model.ZipArchive;
 import software.coley.llzip.util.ByteDataUtil;
 
 public class JarTighten {
+    private static final class EntryData {
+        final int crc32;
+        final int uncompressedSize;
+        final int compressedSize;
+        final int compressionMethod;
+        final int offset;
+
+        public EntryData(int crc32, int uncompressedSize, int compressedSize, int compressionMethod, int offset) {
+            this.crc32 = crc32;
+            this.uncompressedSize = uncompressedSize;
+            this.compressedSize = compressedSize;
+            this.compressionMethod = compressionMethod;
+            this.offset = offset;
+        }
+    }
+
     private static final int EARLIEST_TIME = 0x6020;
     private static final int EARLIEST_DATE = 0x0021;
 
@@ -37,7 +53,7 @@ public class JarTighten {
 
         try
             (FileOutputStream outputStream = new FileOutputStream(output.toFile())) {
-            final HashMap<Integer, Integer> crcToOffset = new HashMap<>();
+            final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
             int offset = 0;
 
             // Local file headers:
@@ -46,7 +62,7 @@ public class JarTighten {
                 final int realCompressedSize = (int) fileHeader.getCompressedSize();
                 final int realUncompressedSize = (int) fileHeader.getUncompressedSize();
 
-                if ((realUncompressedSize == 0) || crcToOffset.containsKey(crc32)) {
+                if ((realUncompressedSize == 0) || crcToEntryData.containsKey(crc32)) {
                     continue;
                 }
 
@@ -58,7 +74,8 @@ public class JarTighten {
                 // General purpose bit flag
                 writeShortLE(outputStream, fileHeader.getGeneralPurposeBitFlag());
                 // Compression method
-                writeShortLE(outputStream, fileHeader.getCompressionMethod());
+                final int compressionMethod = fileHeader.getCompressionMethod();
+                writeShortLE(outputStream, compressionMethod);
                 // Last modification time
                 final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : fileHeader.getLastModFileTime();
                 writeShortLE(outputStream, lastModFileTime);
@@ -91,7 +108,8 @@ public class JarTighten {
                 // TODO This feels wrong?
                 final byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
                 outputStream.write(fileData, 0, realCompressedSize);
-                crcToOffset.put(crc32, offset);
+                final EntryData entryData = new EntryData(crc32, realUncompressedSize, realCompressedSize, compressionMethod, offset);
+                crcToEntryData.put(crc32, entryData);
                 offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
             }
 
@@ -101,9 +119,15 @@ public class JarTighten {
             // Central directory file headers:
             for (final CentralDirectoryFileHeader centralDir : archive.getCentralDirectories()) {
                 final int crc32 = centralDir.getCrc32();
-                final int uncompressedSize = (int) centralDir.getUncompressedSize();
 
-                if ((uncompressedSize == 0) || !crcToOffset.containsKey(crc32)) {
+                if (!crcToEntryData.containsKey(crc32)) {
+                    continue;
+                }
+
+                final EntryData entryData = crcToEntryData.get(crc32);
+                final int uncompressedSize = entryData.uncompressedSize;
+
+                if ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0)) {
                     continue;
                 }
 
@@ -116,7 +140,7 @@ public class JarTighten {
                 // General purpose bit flag
                 writeShortLE(outputStream, centralDir.getGeneralPurposeBitFlag());
                 // Compression method
-                writeShortLE(outputStream, centralDir.getCompressionMethod());
+                writeShortLE(outputStream, entryData.compressionMethod);
                 // Last modification time
                 final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : centralDir.getLastModFileTime();
                 writeShortLE(outputStream, lastModFileTime);
@@ -124,9 +148,9 @@ public class JarTighten {
                 final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : centralDir.getLastModFileDate();
                 writeShortLE(outputStream, lastModFileDate);
                 // CRC32
-                writeIntLE(outputStream, centralDir.getCrc32());
+                writeIntLE(outputStream, entryData.crc32);
                 // Compressed size
-                writeIntLE(outputStream, (int) centralDir.getCompressedSize());
+                writeIntLE(outputStream, entryData.compressedSize);
                 // Uncompressed size
                 writeIntLE(outputStream, uncompressedSize);
                 // File name length
@@ -145,7 +169,7 @@ public class JarTighten {
                 // External file attributes
                 writeIntLE(outputStream, centralDir.getExternalFileAttributes());
                 // Relative offset of local file header
-                writeIntLE(outputStream, crcToOffset.get(crc32));
+                writeIntLE(outputStream, entryData.offset);
                 // File name
                 final byte[] fileName = ByteDataUtil.toByteArray(centralDir.getFileName());
                 outputStream.write(fileName);
