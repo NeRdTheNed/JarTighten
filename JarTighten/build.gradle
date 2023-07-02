@@ -45,28 +45,20 @@ repositories {
 }
 
 shadowJar {
-    minimize()
+    //minimize()
 
     archiveClassifier = 'all'
 }
 
 dependencies {
-    api 'info.picocli:picocli:4.7.4'
+    implementation 'info.picocli:picocli:4.7.4'
     annotationProcessor 'info.picocli:picocli-codegen:4.7.4'
 
-    api 'com.github.Col-E:LL-Java-Zip:1.6.1'
-    api 'org.slf4j:slf4j-api:2.0.7'
-    api 'org.slf4j:slf4j-jdk14:2.0.7'
-
-    api 'com.github.eustas:CafeUndZopfli:5cdf283e67'
+    implementation project(':JarTighten-lib')
 
     shadow 'info.picocli:picocli:4.7.4'
 
-    shadow 'com.github.Col-E:LL-Java-Zip:1.6.1'
-    shadow 'org.slf4j:slf4j-api:2.0.7'
-    shadow 'org.slf4j:slf4j-jdk14:2.0.7'
-
-    shadow 'com.github.eustas:CafeUndZopfli:5cdf283e67'
+    shadow project(':JarTighten-lib')
 }
 
 jar {
