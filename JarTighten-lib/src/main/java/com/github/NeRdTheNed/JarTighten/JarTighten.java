@@ -1,6 +1,7 @@
 package com.github.NeRdTheNed.JarTighten;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -55,12 +56,21 @@ public class JarTighten {
     }
 
     // TODO Optimisation, currently just copies input
-    public static boolean optimiseJar(Path input, Path output, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompress) throws IOException {
+    public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompress) throws IOException {
         final DeflateDecompressor decomp = new DeflateDecompressor();
         final ZipArchive archive = ZipIO.readJvm(input);
+        final File outputFile = output.toFile();
+
+        if (outputFile.exists()) {
+            if (!overwrite) {
+                return false;
+            }
+
+            outputFile.delete();
+        }
 
         try
-            (FileOutputStream outputStream = new FileOutputStream(output.toFile())) {
+            (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
             final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
             int offset = 0;
 
