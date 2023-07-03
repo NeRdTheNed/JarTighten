@@ -10,7 +10,7 @@ public class JarTightenPlugin implements Plugin<Project> {
     public void apply(Project target) {
         final Jar jarTask = ((Jar) target.getTasks().getByName("jar"));
         final JarTightenTask jarTightenTask = target.getTasks().create("jartighten", JarTightenTask.class);
-        jarTightenTask.setInputFile(jarTask.getArchiveFile().get().getAsFile());
-        jarTightenTask.setOutputFile(jarTask.getArchiveFile().get().getAsFile());
+        jarTightenTask.getInputFile().set(jarTask.getArchiveFile());
+        jarTightenTask.getOutputFile().set(jarTask.getArchiveFile());
     }
 }
