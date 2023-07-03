@@ -58,10 +58,16 @@ dependencies {
 }
 
 gradlePlugin {
+    website = 'https://github.com/NeRdTheNed/JarTighten'
+    vcsUrl = 'https://github.com/NeRdTheNed/JarTighten'
+
     plugins {
-        simplePlugin {
+        jartightenPlugin {
             id = 'com.github.nerdthened.jartighten'
             implementationClass = 'com.github.NeRdTheNed.JarTighten.JarTightenPlugin'
+            displayName = 'JarTighten Plugin'
+            description = 'Gradle plugin to reduce the size of jar files'
+            tags.set(['jar', 'zip', 'compression', 'compress'])
         }
     }
 }
