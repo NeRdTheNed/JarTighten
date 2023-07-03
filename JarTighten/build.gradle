@@ -73,9 +73,6 @@ dependencies {
     shadow 'org.slf4j:slf4j-api:2.0.7'
     shadow 'org.slf4j:slf4j-jdk14:2.0.7'
 
-    shadow 'com.github.Col-E:LL-Java-Zip:1.6.1'
-    shadow 'com.github.eustas:CafeUndZopfli:5cdf283e67'
-
     shadow project(':JarTighten-lib')
 }
 
