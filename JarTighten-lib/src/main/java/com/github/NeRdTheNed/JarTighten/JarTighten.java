@@ -31,16 +31,18 @@ public class JarTighten {
     private final boolean removeTimestamps;
     private final boolean removeFileLength;
     private final boolean removeFileNames;
+    private final boolean removeComments;
     private final boolean recompressZopfli;
     private final boolean recompressStandard;
     private final boolean recompressStore;
     private final boolean recursiveStore;
 
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
         this.removeFileNames = removeFileNames;
+        this.removeComments = removeComments;
         this.recompressZopfli = recompressZopfli;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
@@ -388,7 +390,7 @@ public class JarTighten {
             final int extraFieldLength = centralDir.getExtraFieldLength();
             writeShortLE(outputStream, extraFieldLength);
             // File comment length
-            final int fileCommentLength = centralDir.getFileCommentLength();
+            final int fileCommentLength = removeComments ? 0 : centralDir.getFileCommentLength();
             writeShortLE(outputStream, fileCommentLength);
             // Disk number where file starts
             writeShortLE(outputStream, centralDir.getDiskNumberStart());
@@ -405,7 +407,7 @@ public class JarTighten {
             final byte[] extra = ByteDataUtil.toByteArray(centralDir.getExtraField());
             outputStream.write(extra);
             // File comment
-            final byte[] fileComment = ByteDataUtil.toByteArray(centralDir.getFileComment());
+            final byte[] fileComment = removeComments ? new byte[] { } : ByteDataUtil.toByteArray(centralDir.getFileComment());
             outputStream.write(fileComment);
             centralEntries++;
             offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
@@ -428,9 +430,9 @@ public class JarTighten {
         // Central directory offset
         writeIntLE(outputStream, startCentral);
         // Comment length
-        writeShortLE(outputStream, end.getZipCommentLength());
+        writeShortLE(outputStream, removeComments ? 0 : end.getZipCommentLength());
         // Comment
-        final byte[] zipComment = ByteDataUtil.toByteArray(end.getZipComment());
+        final byte[] zipComment = removeComments ? new byte[] { } : ByteDataUtil.toByteArray(end.getZipComment());
         outputStream.write(zipComment);
         return true;
     }

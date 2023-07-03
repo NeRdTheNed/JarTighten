@@ -31,6 +31,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--remove-file-names", "-n" }, defaultValue = "false", description = "Remove file names from local file headers")
     boolean removeFileNames = false;
 
+    @Option(names = { "--remove-comments", "-c" }, defaultValue = "false", description = "Remove file comments and zip comment")
+    boolean removeComments = false;
+
     @Option(names = { "--recompress-zopfli", "-z" }, defaultValue = "false", description = "Recompress files with CafeUndZopfli, uses compressed output if smaller")
     boolean recompressZopfli = false;
 
@@ -53,7 +56,7 @@ public class CMDMain implements Callable<Integer> {
             throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
         return !jarTighten.optimiseJar(inputFile, outputFile, true) ? 1 : CommandLine.ExitCode.OK;
     }
 
