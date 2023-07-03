@@ -11,6 +11,11 @@ plugins {
     id 'com.gradle.plugin-publish' version '1.1.0'
 }
 
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 apply plugin: 'java'
 
 group = 'com.github.NeRdTheNed.JarTighten'

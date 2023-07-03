@@ -9,6 +9,11 @@ plugins {
     id 'maven-publish'
 }
 
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 apply plugin: 'java'
 
 group = 'com.github.NeRdTheNed.JarTighten'
