@@ -157,8 +157,184 @@ public class JarTighten {
         return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData, recompressZopfli, recompressStandard, recompressStore);
     }
 
-    public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
+    public static boolean optimiseJar(ZipArchive archive, OutputStream outputStream, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
+        final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
+        int offset = 0;
+
+        // Local file headers:
+        for (final LocalFileHeader fileHeader : archive.getLocalFiles()) {
+            int crc32 = fileHeader.getCrc32();
+            final int originalCrc32 = crc32;
+            int realCompressedSize = (int) fileHeader.getCompressedSize();
+            int realUncompressedSize = (int) fileHeader.getUncompressedSize();
+
+            if ((realUncompressedSize == 0) || crcToEntryData.containsKey(crc32)) {
+                continue;
+            }
+
+            int compressionMethod = fileHeader.getCompressionMethod();
+            byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
+
+            if (recompress) {
+                try {
+                    final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData, recompressZopfli, recompressStandard, recompressStore);
+                    compressionMethod = newBest.compressionMethod;
+                    fileData = newBest.compressedData;
+                    crc32 = newBest.crc32;
+                    realUncompressedSize = newBest.uncompressedSize;
+                    realCompressedSize = newBest.compressedSize;
+                } catch (final Exception e) {
+                    // TODO Handle errors more gracefully
+                    e.printStackTrace();
+                }
+            }
+
+            final boolean exclude = excludes.contains(fileHeader.getFileNameAsString());
+            // Header
+            writeIntLE(outputStream, ZipPatterns.LOCAL_FILE_HEADER_QUAD);
+            // Minimum version
+            writeShortLE(outputStream, fileHeader.getVersionNeededToExtract());
+            // General purpose bit flag
+            writeShortLE(outputStream, fileHeader.getGeneralPurposeBitFlag());
+            // Compression method
+            writeShortLE(outputStream, compressionMethod);
+            // Last modification time
+            final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : fileHeader.getLastModFileTime();
+            writeShortLE(outputStream, lastModFileTime);
+            // Last modification date
+            final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : fileHeader.getLastModFileDate();
+            writeShortLE(outputStream, lastModFileDate);
+            // CRC32
+            writeIntLE(outputStream, crc32);
+            // Compressed size
+            final int localCompressedSize = (removeFileLength && !exclude) ? 0 : realCompressedSize;
+            writeIntLE(outputStream, localCompressedSize);
+            // Uncompressed size
+            final int localUncompressedSize = (removeFileLength && !exclude) ? 0 : realUncompressedSize;
+            writeIntLE(outputStream, localUncompressedSize);
+            // File name optimisation
+            final boolean isManifest = fileHeader.getFileNameAsString().contains("MANIFEST");
+            final int fileNameLength = (removeFileNames && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
+            final byte[] fileName = (removeFileNames && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
+            // File name length
+            writeShortLE(outputStream, fileNameLength);
+            // Extra field length
+            final int extraFieldLength = fileHeader.getExtraFieldLength();
+            writeShortLE(outputStream, extraFieldLength);
+            // File name
+            outputStream.write(fileName);
+            // Extra field
+            final byte[] extra = ByteDataUtil.toByteArray(fileHeader.getExtraField());
+            outputStream.write(extra);
+            // Compressed data
+            // TODO This feels wrong?
+            outputStream.write(fileData, 0, realCompressedSize);
+            final EntryData entryData = new EntryData(crc32, realUncompressedSize, realCompressedSize, compressionMethod, offset);
+            crcToEntryData.put(crc32, entryData);
+
+            if (crc32 != originalCrc32) {
+                crcToEntryData.put(originalCrc32, entryData);
+            }
+
+            offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
+        }
+
+        final int startCentral = offset;
+        int centralEntries = 0;
+
+        // Central directory file headers:
+        for (final CentralDirectoryFileHeader centralDir : archive.getCentralDirectories()) {
+            final int crc32 = centralDir.getCrc32();
+
+            if (!crcToEntryData.containsKey(crc32)) {
+                continue;
+            }
+
+            final EntryData entryData = crcToEntryData.get(crc32);
+            final int uncompressedSize = entryData.uncompressedSize;
+
+            if ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0)) {
+                continue;
+            }
+
+            // Header
+            writeIntLE(outputStream, ZipPatterns.CENTRAL_DIRECTORY_FILE_HEADER_QUAD);
+            // Made by
+            writeShortLE(outputStream, centralDir.getVersionMadeBy());
+            // Minimum version
+            writeShortLE(outputStream, centralDir.getVersionNeededToExtract());
+            // General purpose bit flag
+            writeShortLE(outputStream, centralDir.getGeneralPurposeBitFlag());
+            // Compression method
+            writeShortLE(outputStream, entryData.compressionMethod);
+            // Last modification time
+            final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : centralDir.getLastModFileTime();
+            writeShortLE(outputStream, lastModFileTime);
+            // Last modification date
+            final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : centralDir.getLastModFileDate();
+            writeShortLE(outputStream, lastModFileDate);
+            // CRC32
+            writeIntLE(outputStream, entryData.crc32);
+            // Compressed size
+            writeIntLE(outputStream, entryData.compressedSize);
+            // Uncompressed size
+            writeIntLE(outputStream, uncompressedSize);
+            // File name length
+            final int fileNameLength = centralDir.getFileNameLength();
+            writeShortLE(outputStream, fileNameLength);
+            // Extra field length
+            final int extraFieldLength = centralDir.getExtraFieldLength();
+            writeShortLE(outputStream, extraFieldLength);
+            // File comment length
+            final int fileCommentLength = centralDir.getFileCommentLength();
+            writeShortLE(outputStream, fileCommentLength);
+            // Disk number where file starts
+            writeShortLE(outputStream, centralDir.getDiskNumberStart());
+            // Internal file attributes
+            writeShortLE(outputStream, centralDir.getInternalFileAttributes());
+            // External file attributes
+            writeIntLE(outputStream, centralDir.getExternalFileAttributes());
+            // Relative offset of local file header
+            writeIntLE(outputStream, entryData.offset);
+            // File name
+            final byte[] fileName = ByteDataUtil.toByteArray(centralDir.getFileName());
+            outputStream.write(fileName);
+            // Extra field
+            final byte[] extra = ByteDataUtil.toByteArray(centralDir.getExtraField());
+            outputStream.write(extra);
+            // File comment
+            final byte[] fileComment = ByteDataUtil.toByteArray(centralDir.getFileComment());
+            outputStream.write(fileComment);
+            centralEntries++;
+            offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
+        }
+
+        // End of central directory record:
+        final EndOfCentralDirectory end = archive.getEnd();
+        // Header
+        writeIntLE(outputStream, ZipPatterns.END_OF_CENTRAL_DIRECTORY_QUAD);
+        // Disk number
+        writeShortLE(outputStream, end.getDiskNumber());
+        // Central directory start disk
+        writeShortLE(outputStream, end.getCentralDirectoryStartDisk());
+        // TODO What is this?
+        writeShortLE(outputStream, end.getCentralDirectoryStartOffset());
+        // Central directory entries
+        writeShortLE(outputStream, centralEntries);
+        // Central directory size
+        writeIntLE(outputStream, offset - startCentral);
+        // Central directory offset
+        writeIntLE(outputStream, startCentral);
+        // Comment length
+        writeShortLE(outputStream, end.getZipCommentLength());
+        // Comment
+        final byte[] zipComment = ByteDataUtil.toByteArray(end.getZipComment());
+        outputStream.write(zipComment);
+        return true;
+    }
+
+    public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
         final ZipArchive archive = ZipIO.readJvm(input);
         final File outputFile = output.toFile();
 
@@ -172,181 +348,8 @@ public class JarTighten {
 
         try
             (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
-            final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
-            int offset = 0;
-
-            // Local file headers:
-            for (final LocalFileHeader fileHeader : archive.getLocalFiles()) {
-                int crc32 = fileHeader.getCrc32();
-                final int originalCrc32 = crc32;
-                int realCompressedSize = (int) fileHeader.getCompressedSize();
-                int realUncompressedSize = (int) fileHeader.getUncompressedSize();
-
-                if ((realUncompressedSize == 0) || crcToEntryData.containsKey(crc32)) {
-                    continue;
-                }
-
-                int compressionMethod = fileHeader.getCompressionMethod();
-                byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
-
-                if (recompress) {
-                    try {
-                        final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData, recompressZopfli, recompressStandard, recompressStore);
-                        compressionMethod = newBest.compressionMethod;
-                        fileData = newBest.compressedData;
-                        crc32 = newBest.crc32;
-                        realUncompressedSize = newBest.uncompressedSize;
-                        realCompressedSize = newBest.compressedSize;
-                    } catch (final Exception e) {
-                        // TODO Handle errors more gracefully
-                        e.printStackTrace();
-                    }
-                }
-
-                final boolean exclude = excludes.contains(fileHeader.getFileNameAsString());
-                // Header
-                writeIntLE(outputStream, ZipPatterns.LOCAL_FILE_HEADER_QUAD);
-                // Minimum version
-                writeShortLE(outputStream, fileHeader.getVersionNeededToExtract());
-                // General purpose bit flag
-                writeShortLE(outputStream, fileHeader.getGeneralPurposeBitFlag());
-                // Compression method
-                writeShortLE(outputStream, compressionMethod);
-                // Last modification time
-                final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : fileHeader.getLastModFileTime();
-                writeShortLE(outputStream, lastModFileTime);
-                // Last modification date
-                final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : fileHeader.getLastModFileDate();
-                writeShortLE(outputStream, lastModFileDate);
-                // CRC32
-                writeIntLE(outputStream, crc32);
-                // Compressed size
-                final int localCompressedSize = (removeFileLength && !exclude) ? 0 : realCompressedSize;
-                writeIntLE(outputStream, localCompressedSize);
-                // Uncompressed size
-                final int localUncompressedSize = (removeFileLength && !exclude) ? 0 : realUncompressedSize;
-                writeIntLE(outputStream, localUncompressedSize);
-                // File name optimisation
-                final boolean isManifest = fileHeader.getFileNameAsString().contains("MANIFEST");
-                final int fileNameLength = (removeFileNames && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
-                final byte[] fileName = (removeFileNames && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
-                // File name length
-                writeShortLE(outputStream, fileNameLength);
-                // Extra field length
-                final int extraFieldLength = fileHeader.getExtraFieldLength();
-                writeShortLE(outputStream, extraFieldLength);
-                // File name
-                outputStream.write(fileName);
-                // Extra field
-                final byte[] extra = ByteDataUtil.toByteArray(fileHeader.getExtraField());
-                outputStream.write(extra);
-                // Compressed data
-                // TODO This feels wrong?
-                outputStream.write(fileData, 0, realCompressedSize);
-                final EntryData entryData = new EntryData(crc32, realUncompressedSize, realCompressedSize, compressionMethod, offset);
-                crcToEntryData.put(crc32, entryData);
-
-                if (crc32 != originalCrc32) {
-                    crcToEntryData.put(originalCrc32, entryData);
-                }
-
-                offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
-            }
-
-            final int startCentral = offset;
-            int centralEntries = 0;
-
-            // Central directory file headers:
-            for (final CentralDirectoryFileHeader centralDir : archive.getCentralDirectories()) {
-                final int crc32 = centralDir.getCrc32();
-
-                if (!crcToEntryData.containsKey(crc32)) {
-                    continue;
-                }
-
-                final EntryData entryData = crcToEntryData.get(crc32);
-                final int uncompressedSize = entryData.uncompressedSize;
-
-                if ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0)) {
-                    continue;
-                }
-
-                // Header
-                writeIntLE(outputStream, ZipPatterns.CENTRAL_DIRECTORY_FILE_HEADER_QUAD);
-                // Made by
-                writeShortLE(outputStream, centralDir.getVersionMadeBy());
-                // Minimum version
-                writeShortLE(outputStream, centralDir.getVersionNeededToExtract());
-                // General purpose bit flag
-                writeShortLE(outputStream, centralDir.getGeneralPurposeBitFlag());
-                // Compression method
-                writeShortLE(outputStream, entryData.compressionMethod);
-                // Last modification time
-                final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : centralDir.getLastModFileTime();
-                writeShortLE(outputStream, lastModFileTime);
-                // Last modification date
-                final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : centralDir.getLastModFileDate();
-                writeShortLE(outputStream, lastModFileDate);
-                // CRC32
-                writeIntLE(outputStream, entryData.crc32);
-                // Compressed size
-                writeIntLE(outputStream, entryData.compressedSize);
-                // Uncompressed size
-                writeIntLE(outputStream, uncompressedSize);
-                // File name length
-                final int fileNameLength = centralDir.getFileNameLength();
-                writeShortLE(outputStream, fileNameLength);
-                // Extra field length
-                final int extraFieldLength = centralDir.getExtraFieldLength();
-                writeShortLE(outputStream, extraFieldLength);
-                // File comment length
-                final int fileCommentLength = centralDir.getFileCommentLength();
-                writeShortLE(outputStream, fileCommentLength);
-                // Disk number where file starts
-                writeShortLE(outputStream, centralDir.getDiskNumberStart());
-                // Internal file attributes
-                writeShortLE(outputStream, centralDir.getInternalFileAttributes());
-                // External file attributes
-                writeIntLE(outputStream, centralDir.getExternalFileAttributes());
-                // Relative offset of local file header
-                writeIntLE(outputStream, entryData.offset);
-                // File name
-                final byte[] fileName = ByteDataUtil.toByteArray(centralDir.getFileName());
-                outputStream.write(fileName);
-                // Extra field
-                final byte[] extra = ByteDataUtil.toByteArray(centralDir.getExtraField());
-                outputStream.write(extra);
-                // File comment
-                final byte[] fileComment = ByteDataUtil.toByteArray(centralDir.getFileComment());
-                outputStream.write(fileComment);
-                centralEntries++;
-                offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
-            }
-
-            // End of central directory record:
-            final EndOfCentralDirectory end = archive.getEnd();
-            // Header
-            writeIntLE(outputStream, ZipPatterns.END_OF_CENTRAL_DIRECTORY_QUAD);
-            // Disk number
-            writeShortLE(outputStream, end.getDiskNumber());
-            // Central directory start disk
-            writeShortLE(outputStream, end.getCentralDirectoryStartDisk());
-            // TODO What is this?
-            writeShortLE(outputStream, end.getCentralDirectoryStartOffset());
-            // Central directory entries
-            writeShortLE(outputStream, centralEntries);
-            // Central directory size
-            writeIntLE(outputStream, offset - startCentral);
-            // Central directory offset
-            writeIntLE(outputStream, startCentral);
-            // Comment length
-            writeShortLE(outputStream, end.getZipCommentLength());
-            // Comment
-            final byte[] zipComment = ByteDataUtil.toByteArray(end.getZipComment());
-            outputStream.write(zipComment);
+            return optimiseJar(archive, outputStream, excludes, removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
         }
-
-        return true;
     }
 
 }
