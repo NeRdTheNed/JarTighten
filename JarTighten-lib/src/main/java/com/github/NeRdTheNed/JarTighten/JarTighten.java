@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.zip.Deflater;
 
 import ru.eustas.zopfli.Options;
 import ru.eustas.zopfli.Options.BlockSplitting;
@@ -55,8 +56,35 @@ public class JarTighten {
         out.write((value >> 24) & 0xFF);
     }
 
+    // TODO Option customization
+    private static byte[] compressZopfli(byte[] uncompressedData) throws IOException {
+        final Zopfli compressor = new Zopfli(8 << 20);
+        final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        compressor.compress(options, uncompressedData, bos);
+        return bos.toByteArray();
+    }
+
+    // TODO Option customization
+    private static byte[] compressStandard(byte[] uncompressedData) {
+        final Deflater compressor = new Deflater(Deflater.BEST_COMPRESSION, true);
+        compressor.setInput(uncompressedData);
+        compressor.finish();
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final byte[] buffer = new byte[4096];
+
+        while (!compressor.finished()) {
+            final int deflated = compressor.deflate(buffer);
+            bos.write(buffer, 0, deflated);
+        }
+
+        compressor.end();
+        return bos.toByteArray();
+    }
+
     // TODO Optimisation, currently just copies input
-    public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompress) throws IOException {
+    public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
+        final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final DeflateDecompressor decomp = new DeflateDecompressor();
         final ZipArchive archive = ZipIO.readJvm(input);
         final File outputFile = output.toFile();
@@ -84,27 +112,54 @@ public class JarTighten {
                     continue;
                 }
 
-                final int compressionMethod = fileHeader.getCompressionMethod();
+                int compressionMethod = fileHeader.getCompressionMethod();
                 byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
 
-                if (recompress && (compressionMethod == ZipCompressions.DEFLATED)) {
-                    try {
-                        final byte[] uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
+                if (recompress) {
+                    final byte[] uncompressedData;
+
+                    if (compressionMethod == ZipCompressions.DEFLATED) {
+                        uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
+                    } else if (compressionMethod == ZipCompressions.STORED) {
+                        uncompressedData = fileData;
+                    } else {
+                        uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
+                    }
+
+                    if (recompressStandard) {
                         // TODO Option customization
-                        final Zopfli compressor = new Zopfli(8 << 20);
-                        final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
-                        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                        compressor.compress(options, uncompressedData, bos);
-                        final byte[] zopfliCompressedData = bos.toByteArray();
+                        final byte[] recompressedData = compressStandard(uncompressedData);
 
                         // TODO Verify data integrity
 
-                        if (zopfliCompressedData.length < realCompressedSize) {
-                            fileData = zopfliCompressedData;
-                            realCompressedSize = zopfliCompressedData.length;
+                        if (recompressedData.length < realCompressedSize) {
+                            fileData = recompressedData;
+                            realCompressedSize = recompressedData.length;
+                            compressionMethod = ZipCompressions.DEFLATED;
                         }
-                    } catch (final Exception e) {
-                        // Ignored
+                    }
+
+                    if (recompressZopfli) {
+                        try {
+                            // TODO Option customization
+                            final byte[] zopfliCompressedData = compressZopfli(uncompressedData);
+
+                            // TODO Verify data integrity
+
+                            if (zopfliCompressedData.length < realCompressedSize) {
+                                fileData = zopfliCompressedData;
+                                realCompressedSize = zopfliCompressedData.length;
+                                compressionMethod = ZipCompressions.DEFLATED;
+                            }
+                        } catch (final Exception e) {
+                            // Ignored
+                        }
+                    }
+
+                    if (recompressStore && (uncompressedData.length < realCompressedSize)) {
+                        fileData = uncompressedData;
+                        realCompressedSize = uncompressedData.length;
+                        compressionMethod = ZipCompressions.STORED;
                     }
                 }
 

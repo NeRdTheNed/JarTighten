@@ -12,7 +12,9 @@ public class JarTightenPlugin implements Plugin<Project> {
             final Jar jarTask = (Jar) project.getTasks().getByName("jar");
             project.getTasks().register("jartighten", JarTightenTask.class, jarTightenTask -> {
                 jarTightenTask.dependsOn("jar");
-                jarTightenTask.getRecompress().convention(false);
+                jarTightenTask.getRecompressStore().convention(true);
+                jarTightenTask.getRecompressStandard().convention(true);
+                jarTightenTask.getRecompressZopfli().convention(false);
                 jarTightenTask.getRemoveTimestamps().convention(false);
                 jarTightenTask.getRemoveFileLength().convention(false);
                 jarTightenTask.getRemoveFileNames().convention(false);
