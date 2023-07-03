@@ -16,49 +16,62 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
 
+/** A task to optimise a given jar file with JarTighten */
 public abstract class JarTightenTask extends DefaultTask {
+    /** Input jar file to optimise */
     @InputFile
     public abstract RegularFileProperty getInputFile();
 
+    /** Output optimised jar file */
     @OutputFile
     public abstract RegularFileProperty getOutputFile();
 
+    /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     @Input
     @Optional
     public abstract Property<Boolean> getRecompressZopfli();
 
+    /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
     @Input
     @Optional
     public abstract Property<Boolean> getRecompressStandard();
 
+    /** Check uncompressed size, stores uncompressed if smaller */
     @Input
     @Optional
     public abstract Property<Boolean> getRecompressStore();
 
+    /** Remove timestamps */
     @Input
     @Optional
     public abstract Property<Boolean> getRemoveTimestamps();
 
+    /** Remove file length from local file headers */
     @Input
     @Optional
     public abstract Property<Boolean> getRemoveFileLength();
 
+    /** Remove file names from local file headers */
     @Input
     @Optional
     public abstract Property<Boolean> getRemoveFileNames();
 
+    /** Remove file comments and zip comment */
     @Input
     @Optional
     public abstract Property<Boolean> getRemoveComments();
 
+    /** Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     @Input
     @Optional
     public abstract Property<Boolean> getRecursiveStore();
 
+    /** Files to exclude from optimisations which might hide them from standard zip libraries */
     @Input
     @Optional
     public abstract ListProperty<String> getExcludes();
 
+    /** Optimise a jar file with JarTighten */
     @TaskAction
     public void jarTighten() {
         final Path inputPath = getInputFile().getAsFile().get().toPath();

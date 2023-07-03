@@ -5,6 +5,7 @@ import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.jvm.tasks.Jar;
 
+/** Configures a JarTightenTask using the output of the jar task by default */
 public class JarTightenPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
