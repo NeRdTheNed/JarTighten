@@ -36,7 +36,7 @@ jobs:
           body: Replace this text with the description of this release!
           draft: true
           prerelease: false
-          path: |
+          files: |
             JarTighten/build/libs
             JarTighten-lib/build/libs
             JarTighten-plugin/build/libs
