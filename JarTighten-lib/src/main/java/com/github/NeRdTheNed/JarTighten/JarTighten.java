@@ -41,6 +41,22 @@ public class JarTighten {
         }
     }
 
+    private static final class CompressionResult {
+        final int compressionMethod;
+        final byte[] compressedData;
+        final int crc32;
+        final int uncompressedSize;
+        final int compressedSize;
+
+        public CompressionResult(int compressionMethod, byte[] compressedData, int crc32, int uncompressedSize, int compressedSize) {
+            this.compressionMethod = compressionMethod;
+            this.compressedData = compressedData;
+            this.crc32 = crc32;
+            this.uncompressedSize = uncompressedSize;
+            this.compressedSize = compressedSize;
+        }
+    }
+
     private static final int EARLIEST_TIME = 0x6020;
     private static final int EARLIEST_DATE = 0x0021;
 
@@ -82,10 +98,62 @@ public class JarTighten {
         return bos.toByteArray();
     }
 
+    private static final DeflateDecompressor decomp = new DeflateDecompressor();
+
+    private static CompressionResult findSmallestOutput(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
+        final byte[] uncompressedData;
+
+        if (compressionMethod == ZipCompressions.DEFLATED) {
+            uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
+        } else if (compressionMethod == ZipCompressions.STORED) {
+            uncompressedData = compressedData;
+        } else {
+            uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
+        }
+
+        if (recompressStandard) {
+            // TODO Option customization
+            final byte[] recompressedData = compressStandard(uncompressedData);
+
+            // TODO Verify data integrity
+
+            if (recompressedData.length < compressedSize) {
+                compressedData = recompressedData;
+                compressedSize = recompressedData.length;
+                compressionMethod = ZipCompressions.DEFLATED;
+            }
+        }
+
+        if (recompressZopfli) {
+            try {
+                // TODO Option customization
+                final byte[] zopfliCompressedData = compressZopfli(uncompressedData);
+
+                // TODO Verify data integrity
+
+                if (zopfliCompressedData.length < compressedSize) {
+                    compressedData = zopfliCompressedData;
+                    compressedSize = zopfliCompressedData.length;
+                    compressionMethod = ZipCompressions.DEFLATED;
+                }
+            } catch (final Exception e) {
+                // TODO Handle errors more gracefully
+                e.printStackTrace();
+            }
+        }
+
+        if (recompressStore && (uncompressedData.length < compressedSize)) {
+            compressedData = uncompressedData;
+            compressedSize = uncompressedData.length;
+            compressionMethod = ZipCompressions.STORED;
+        }
+
+        return new CompressionResult(compressionMethod, compressedData, crc32, uncompressedSize, compressedSize);
+    }
+
     // TODO Optimisation, currently just copies input
     public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
-        final DeflateDecompressor decomp = new DeflateDecompressor();
         final ZipArchive archive = ZipIO.readJvm(input);
         final File outputFile = output.toFile();
 
@@ -104,9 +172,10 @@ public class JarTighten {
 
             // Local file headers:
             for (final LocalFileHeader fileHeader : archive.getLocalFiles()) {
-                final int crc32 = fileHeader.getCrc32();
+                int crc32 = fileHeader.getCrc32();
+                final int originalCrc32 = crc32;
                 int realCompressedSize = (int) fileHeader.getCompressedSize();
-                final int realUncompressedSize = (int) fileHeader.getUncompressedSize();
+                int realUncompressedSize = (int) fileHeader.getUncompressedSize();
 
                 if ((realUncompressedSize == 0) || crcToEntryData.containsKey(crc32)) {
                     continue;
@@ -116,50 +185,16 @@ public class JarTighten {
                 byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
 
                 if (recompress) {
-                    final byte[] uncompressedData;
-
-                    if (compressionMethod == ZipCompressions.DEFLATED) {
-                        uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
-                    } else if (compressionMethod == ZipCompressions.STORED) {
-                        uncompressedData = fileData;
-                    } else {
-                        uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
-                    }
-
-                    if (recompressStandard) {
-                        // TODO Option customization
-                        final byte[] recompressedData = compressStandard(uncompressedData);
-
-                        // TODO Verify data integrity
-
-                        if (recompressedData.length < realCompressedSize) {
-                            fileData = recompressedData;
-                            realCompressedSize = recompressedData.length;
-                            compressionMethod = ZipCompressions.DEFLATED;
-                        }
-                    }
-
-                    if (recompressZopfli) {
-                        try {
-                            // TODO Option customization
-                            final byte[] zopfliCompressedData = compressZopfli(uncompressedData);
-
-                            // TODO Verify data integrity
-
-                            if (zopfliCompressedData.length < realCompressedSize) {
-                                fileData = zopfliCompressedData;
-                                realCompressedSize = zopfliCompressedData.length;
-                                compressionMethod = ZipCompressions.DEFLATED;
-                            }
-                        } catch (final Exception e) {
-                            // Ignored
-                        }
-                    }
-
-                    if (recompressStore && (uncompressedData.length < realCompressedSize)) {
-                        fileData = uncompressedData;
-                        realCompressedSize = uncompressedData.length;
-                        compressionMethod = ZipCompressions.STORED;
+                    try {
+                        final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData, recompressZopfli, recompressStandard, recompressStore);
+                        compressionMethod = newBest.compressionMethod;
+                        fileData = newBest.compressedData;
+                        crc32 = newBest.crc32;
+                        realUncompressedSize = newBest.uncompressedSize;
+                        realCompressedSize = newBest.compressedSize;
+                    } catch (final Exception e) {
+                        // TODO Handle errors more gracefully
+                        e.printStackTrace();
                     }
                 }
 
@@ -205,6 +240,11 @@ public class JarTighten {
                 outputStream.write(fileData, 0, realCompressedSize);
                 final EntryData entryData = new EntryData(crc32, realUncompressedSize, realCompressedSize, compressionMethod, offset);
                 crcToEntryData.put(crc32, entryData);
+
+                if (crc32 != originalCrc32) {
+                    crcToEntryData.put(originalCrc32, entryData);
+                }
+
                 offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
             }
 
