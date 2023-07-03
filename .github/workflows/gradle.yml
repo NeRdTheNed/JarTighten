@@ -20,7 +20,7 @@ jobs:
         with:
           gradle-version: wrapper
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
-          arguments: build
+          arguments: build --scan --stacktrace --warning-mode all
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
