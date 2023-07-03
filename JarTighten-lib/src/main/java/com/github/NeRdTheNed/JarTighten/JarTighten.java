@@ -72,29 +72,31 @@ public class JarTighten {
         out.write((value >> 24) & 0xFF);
     }
 
+    private static final Zopfli zopfliCompressor = new Zopfli(8 << 20);
+    private static final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
+
     // TODO Option customization
     private static byte[] compressZopfli(byte[] uncompressedData) throws IOException {
-        final Zopfli compressor = new Zopfli(8 << 20);
-        final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        compressor.compress(options, uncompressedData, bos);
+        zopfliCompressor.compress(options, uncompressedData, bos);
         return bos.toByteArray();
     }
 
+    private static final Deflater javaCompressor = new Deflater(Deflater.BEST_COMPRESSION, true);
+
     // TODO Option customization
     private static byte[] compressStandard(byte[] uncompressedData) {
-        final Deflater compressor = new Deflater(Deflater.BEST_COMPRESSION, true);
-        compressor.setInput(uncompressedData);
-        compressor.finish();
+        javaCompressor.setInput(uncompressedData);
+        javaCompressor.finish();
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         final byte[] buffer = new byte[4096];
 
-        while (!compressor.finished()) {
-            final int deflated = compressor.deflate(buffer);
+        while (!javaCompressor.finished()) {
+            final int deflated = javaCompressor.deflate(buffer);
             bos.write(buffer, 0, deflated);
         }
 
-        compressor.end();
+        javaCompressor.reset();
         return bos.toByteArray();
     }
 
