@@ -391,7 +391,11 @@ public class JarTighten {
             // Minimum version
             writeShortLE(outputStream, fileHeader.getVersionNeededToExtract());
             // General purpose bit flag
-            writeShortLE(outputStream, fileHeader.getGeneralPurposeBitFlag());
+            int bitFlag = fileHeader.getGeneralPurposeBitFlag();
+            // Clear the "Data Descriptor" / EXTSIG flag
+            // TODO Option to keep this?
+            bitFlag &= ~(1 << 3);
+            writeShortLE(outputStream, bitFlag);
             // Compression method
             writeShortLE(outputStream, compressionMethod);
             // Last modification time
@@ -460,7 +464,11 @@ public class JarTighten {
             // Minimum version
             writeShortLE(outputStream, centralDir.getVersionNeededToExtract());
             // General purpose bit flag
-            writeShortLE(outputStream, centralDir.getGeneralPurposeBitFlag());
+            int bitFlag = centralDir.getGeneralPurposeBitFlag();
+            // Clear the "Data Descriptor" / EXTSIG flag
+            // TODO Option to keep this?
+            bitFlag &= ~(1 << 3);
+            writeShortLE(outputStream, bitFlag);
             // Compression method
             writeShortLE(outputStream, entryData.compressionMethod);
             // Last modification time
