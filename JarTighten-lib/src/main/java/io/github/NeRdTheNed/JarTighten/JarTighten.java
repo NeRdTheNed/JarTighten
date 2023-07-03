@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -556,7 +557,7 @@ public class JarTighten {
                 return false;
             }
 
-            outputFile.delete();
+            Files.delete(output);
         }
 
         try
