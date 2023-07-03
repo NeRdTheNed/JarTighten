@@ -47,7 +47,7 @@ jartighten {
     // Enable Zopfli recompression (very time consuming, may require configuring Gradle to use more memory)
     recompressZopfli = true
     // Disable standard JVM deflate recompression (enabled by default)
-    //recompressStandard = fasle
+    //recompressStandard = false
     // Disable checking if storing a file as uncompressed would be smaller (enabled by default)
     //recompressStore = false
     // Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
