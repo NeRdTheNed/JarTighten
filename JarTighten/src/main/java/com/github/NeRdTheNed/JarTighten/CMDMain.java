@@ -22,14 +22,14 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--exclude", "-e" }, description = "Files to exclude from optimisations which might hide them from standard zip libraries")
     List<String> excludes;
 
-    @Option(names = { "--remove-timestamps", "-t" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove timestamps")
-    boolean removeTimestamps = true;
+    @Option(names = { "--remove-timestamps", "-t" }, defaultValue = "false", description = "Remove timestamps")
+    boolean removeTimestamps = false;
 
-    @Option(names = { "--remove-file-length", "-l" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove file length from local file headers")
-    boolean removeFileLength = true;
+    @Option(names = { "--remove-file-length", "-l" }, defaultValue = "false", description = "Remove file length from local file headers")
+    boolean removeFileLength = false;
 
-    @Option(names = { "--remove-file-names", "-n" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove file names from local file headers")
-    boolean removeFileNames = true;
+    @Option(names = { "--remove-file-names", "-n" }, defaultValue = "false", description = "Remove file names from local file headers")
+    boolean removeFileNames = false;
 
     @Option(names = { "--recompress-zopfli", "-z" }, defaultValue = "false", description = "Recompress files with CafeUndZopfli, uses compressed output if smaller")
     boolean recompressZopfli = false;
