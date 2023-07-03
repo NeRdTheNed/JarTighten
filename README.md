@@ -38,10 +38,22 @@ jartighten {
 
     // Remove file timestamps
     removeTimestamps = true
-    // Enable Zopfli recompression (may require configuring Gradle to use more memory)
+    // Remove local header file length
+    //removeFileLength = true
+    // Remove local header file names
+    //removeFileNames = true
+    // Remove file commments and zip comment
+    removeComments = true
+    // Enable Zopfli recompression (very time consuming, may require configuring Gradle to use more memory)
     recompressZopfli = true
+    // Disable standard JVM deflate recompression (enabled by default)
+    //recompressStandard = fasle
+    // Disable checking if storing a file as uncompressed would be smaller (enabled by default)
+    //recompressStore = false
+    // Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
+    recursiveStore = true
 
-    // Exclude a file from optimisations which might hide them from standard zip libraries 
+    // Exclude a file from optimisations which might hide them from standard zip libraries
     //excludes = ["some/package/SomeFile.ext"]
 }
 
