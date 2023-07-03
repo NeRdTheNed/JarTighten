@@ -26,6 +26,9 @@ import software.coley.llzip.format.model.LocalFileHeader;
 import software.coley.llzip.format.model.ZipArchive;
 import software.coley.llzip.util.ByteDataUtil;
 
+/**
+ * Jar file size optimiser, including optimisations based on quirks of Java's zip parsing implementation.
+ */
 public class JarTighten {
     /** Files to exclude from optimisations which might hide them from standard zip libraries */
     private final List<String> excludes;
@@ -46,6 +49,7 @@ public class JarTighten {
     /** Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     private final boolean recursiveStore;
 
+    /** Creates a JarTighten instance with the given options. */
     public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
@@ -90,14 +94,29 @@ public class JarTighten {
         }
     }
 
+    /** Zip time constant, used when removing timestamps */
     private static final int EARLIEST_TIME = 0x6020;
+
+    /** Zip date constant, used when removing timestamps */
     private static final int EARLIEST_DATE = 0x0021;
 
+    /**
+     * Write a short to the output stream as bytes in LE order.
+     *
+     * @param out the output stream
+     * @param value the value to write
+     */
     private static void writeShortLE(OutputStream out, int value) throws IOException {
         out.write(value & 0xFF);
         out.write((value >> 8) & 0xFF);
     }
 
+    /**
+     * Write an integer to the output stream as bytes in LE order.
+     *
+     * @param out the output stream
+     * @param value the value to write
+     */
     private static void writeIntLE(OutputStream out, int value) throws IOException {
         out.write(value & 0xFF);
         out.write((value >> 8) & 0xFF);
@@ -105,25 +124,39 @@ public class JarTighten {
         out.write((value >> 24) & 0xFF);
     }
 
-    // Lazy construct the Zopfli instance due to RAM use
+    /** Cached lazily constructed Zopfli compressor. Lazily constructed due to RAM use. */
     private Supplier<Zopfli> zopfliCompressor = () -> {
         final Zopfli zop = new Zopfli(8 << 20);
         zopfliCompressor = () -> zop;
         return zop;
     };
 
+    /** Cached Zopfli options */
     private final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
 
-    // TODO Option customization
+    /**
+     * Compress using Zopfli deflate compression.
+     * TODO Option customization
+     *
+     * @param uncompressedData uncompressed data
+     * @return compressed data
+     */
     private byte[] compressZopfli(byte[] uncompressedData) throws IOException {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         zopfliCompressor.get().compress(options, uncompressedData, bos);
         return bos.toByteArray();
     }
 
+    /** Cached JVM compressor */
     private final Deflater javaCompressor = new Deflater(Deflater.BEST_COMPRESSION, true);
 
-    // TODO Option customization
+    /**
+     * Compress using the best standard JVM deflate compression.
+     * TODO Option customization
+     *
+     * @param uncompressedData uncompressed data
+     * @return compressed data
+     */
     private byte[] compressStandard(byte[] uncompressedData) {
         javaCompressor.setInput(uncompressedData);
         javaCompressor.finish();
@@ -139,8 +172,15 @@ public class JarTighten {
         return bos.toByteArray();
     }
 
+    /** Cached CRC32 calculator */
     private final CRC32 crc32Calc = new CRC32();
 
+    /**
+     * Create a zip file with its contents and all embeded zip or jar files stored uncompressed recursively from the given input.
+     *
+     * @param zipInZip the input zip file
+     * @return the recursively stored zip file
+     */
     private CompressionResult asRecursiveStoredZip(ZipArchive zipInZip) throws IOException {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         optimiseJar(true, zipInZip, bos);
@@ -152,8 +192,21 @@ public class JarTighten {
         return new CompressionResult(ZipCompressions.STORED, storedJar, crc32, uncompressedSize, uncompressedSize);
     }
 
+    /** Cached decompressor */
     private final DeflateDecompressor decomp = new DeflateDecompressor();
 
+    /**
+     * Find the smallest way to store the given input file.
+     *
+     * @param uncompressedData the input uncompressed data
+     * @param crc32 the input crc32
+     * @param uncompressedSize the input uncompressed size
+     * @param compressedSize the input compressed size
+     * @param compressionMethod the input compression method
+     * @param compressedData the input compressed data
+     * @param zipLike if true, the input file is a zip-based format
+     * @return the best compressed result with the configured settings
+     */
     private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
         if (recompressStandard) {
             // TODO Option customization
@@ -214,6 +267,17 @@ public class JarTighten {
         return new CompressionResult(compressionMethod, compressedData, crc32, uncompressedSize, compressedSize);
     }
 
+    /**
+     * Find the smallest way to store the given input file.
+     *
+     * @param fileHeader the input file header
+     * @param crc32 the input crc32
+     * @param uncompressedSize the input uncompressed size
+     * @param compressedSize the input compressed size
+     * @param compressionMethod the input compression method
+     * @param compressedData the input compressed data
+     * @return the best compressed result with the configured settings
+     */
     private CompressionResult findSmallestOutput(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData) throws IOException {
         final byte[] uncompressedData;
 
@@ -230,6 +294,16 @@ public class JarTighten {
         return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData, zipLike);
     }
 
+    /**
+     * Create a stored CompressionResult from the given input.
+     *
+     * @param fileHeader the local file header
+     * @param crc32 the input crc32
+     * @param uncompressedSize the input uncompressed size
+     * @param compressionMethod the input compression method
+     * @param compressedData the input compressed data
+     * @return a stored CompressionResult from the given input
+     */
     private CompressionResult asStored(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
         byte[] uncompressedData;
 
@@ -257,6 +331,14 @@ public class JarTighten {
         return new CompressionResult(ZipCompressions.STORED, uncompressedData, crc32, uncompressedSize, uncompressedSize);
     }
 
+    /**
+     * Optimises a ZipArchive, with the configured settings.
+     *
+     * @param forceRecursiveStore if true, store the contents of this and all embeded zip or jar files uncompressed recursively
+     * @param archive the ZipArchive to optimise
+     * @param outputStream output stream for optimised jar to be written to
+     * @return true, if successful
+     */
     private boolean optimiseJar(boolean forceRecursiveStore, ZipArchive archive, OutputStream outputStream) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
@@ -446,10 +528,25 @@ public class JarTighten {
         return true;
     }
 
+    /**
+     * Optimises a ZipArchive, with the configured settings.
+     *
+     * @param archive the ZipArchive to optimise
+     * @param outputStream output stream for optimised jar to be written to
+     * @return true, if successful
+     */
     public boolean optimiseJar(ZipArchive archive, OutputStream outputStream) throws IOException {
         return optimiseJar(false, archive, outputStream);
     }
 
+    /**
+     * Optimises a jar file at the given path, with the configured settings.
+     *
+     * @param input the input jar file
+     * @param output the output jar file
+     * @param overwrite if true, overwrite existing output file
+     * @return true, if successful
+     */
     public boolean optimiseJar(Path input, Path output, boolean overwrite) throws IOException {
         final ZipArchive archive = ZipIO.readJvm(input);
         final File outputFile = output.toFile();
