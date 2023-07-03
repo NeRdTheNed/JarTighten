@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
@@ -93,13 +94,19 @@ public class JarTighten {
         out.write((value >> 24) & 0xFF);
     }
 
-    private final Zopfli zopfliCompressor = new Zopfli(8 << 20);
+    // Lazy construct the Zopfli instance due to RAM use
+    private Supplier<Zopfli> zopfliCompressor = () -> {
+        final Zopfli zop = new Zopfli(8 << 20);
+        zopfliCompressor = () -> zop;
+        return zop;
+    };
+
     private final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
 
     // TODO Option customization
     private byte[] compressZopfli(byte[] uncompressedData) throws IOException {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        zopfliCompressor.compress(options, uncompressedData, bos);
+        zopfliCompressor.get().compress(options, uncompressedData, bos);
         return bos.toByteArray();
     }
 
