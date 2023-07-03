@@ -56,6 +56,12 @@ repositories {
 
 shadowJar {
     minimize()
+    relocate 'ru.eustas.zopfli', 'com.github.NeRdTheNed.JarTighten.shadow.zopfli'
+    relocate 'software.coley.llzip', 'com.github.NeRdTheNed.JarTighten.shadow.llzip'
+
+    dependencies {
+        exclude(dependency('org.slf4j:.*'))
+    }
 
     archiveClassifier = ''
 }

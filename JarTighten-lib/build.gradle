@@ -7,7 +7,6 @@ buildscript {
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 apply plugin: 'java'
@@ -53,24 +52,9 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 
-shadowJar {
-    //minimize()
-
-    archiveClassifier = 'all'
-}
-
 dependencies {
-    implementation 'com.github.Col-E:LL-Java-Zip:1.6.1'
-    implementation 'org.slf4j:slf4j-api:2.0.7'
-    implementation 'org.slf4j:slf4j-jdk14:2.0.7'
-
+    api 'com.github.Col-E:LL-Java-Zip:1.6.1'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
-
-    shadow 'com.github.Col-E:LL-Java-Zip:1.6.1'
-    shadow 'org.slf4j:slf4j-api:2.0.7'
-    shadow 'org.slf4j:slf4j-jdk14:2.0.7'
-
-    shadow 'com.github.eustas:CafeUndZopfli:5cdf283e67'
 }
 
 jar {
@@ -80,5 +64,3 @@ jar {
         )
     }
 }
-
-build.finalizedBy(shadowJar)
