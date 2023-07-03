@@ -151,7 +151,6 @@ public class JarTighten {
         return new CompressionResult(compressionMethod, compressedData, crc32, uncompressedSize, compressedSize);
     }
 
-    // TODO Optimisation, currently just copies input
     public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final ZipArchive archive = ZipIO.readJvm(input);
