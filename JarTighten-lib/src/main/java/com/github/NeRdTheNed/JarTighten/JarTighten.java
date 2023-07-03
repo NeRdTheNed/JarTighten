@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
 import ru.eustas.zopfli.Options;
@@ -32,8 +33,9 @@ public class JarTighten {
     private final boolean recompressZopfli;
     private final boolean recompressStandard;
     private final boolean recompressStore;
+    private final boolean recursiveStore;
 
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
@@ -41,6 +43,7 @@ public class JarTighten {
         this.recompressZopfli = recompressZopfli;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
+        this.recursiveStore = recursiveStore;
     }
 
     private static final class EntryData {
@@ -118,9 +121,22 @@ public class JarTighten {
         return bos.toByteArray();
     }
 
+    private final CRC32 crc32Calc = new CRC32();
+
+    private CompressionResult asRecursiveStoredZip(ZipArchive zipInZip) throws IOException {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        optimiseJar(true, zipInZip, bos);
+        final byte[] storedJar = bos.toByteArray();
+        crc32Calc.update(storedJar);
+        final int crc32 = (int) crc32Calc.getValue();
+        crc32Calc.reset();
+        final int uncompressedSize = storedJar.length;
+        return new CompressionResult(ZipCompressions.STORED, storedJar, crc32, uncompressedSize, uncompressedSize);
+    }
+
     private final DeflateDecompressor decomp = new DeflateDecompressor();
 
-    private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData) {
+    private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
         if (recompressStandard) {
             // TODO Option customization
             final byte[] recompressedData = compressStandard(uncompressedData);
@@ -158,6 +174,25 @@ public class JarTighten {
             compressionMethod = ZipCompressions.STORED;
         }
 
+        if (zipLike && recursiveStore) {
+            try {
+                final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData);
+                final CompressionResult uncomZip = asRecursiveStoredZip(zipInZip);
+                final CompressionResult comUncomZip = findSmallestOutput(uncomZip.compressedData, uncomZip.crc32, uncomZip.uncompressedSize, uncomZip.uncompressedSize, ZipCompressions.STORED, uncomZip.compressedData, false);
+
+                if (comUncomZip.compressedSize < compressedSize) {
+                    compressedData = comUncomZip.compressedData;
+                    compressedSize = comUncomZip.compressedSize;
+                    compressionMethod = comUncomZip.compressionMethod;
+                    crc32 = comUncomZip.crc32;
+                    uncompressedSize = comUncomZip.uncompressedSize;
+                }
+            } catch (final Exception e) {
+                // TODO Handle errors more gracefully
+                e.printStackTrace();
+            }
+        }
+
         return new CompressionResult(compressionMethod, compressedData, crc32, uncompressedSize, compressedSize);
     }
 
@@ -172,10 +207,39 @@ public class JarTighten {
             uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
         }
 
-        return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData);
+        final String localFileName = fileHeader.getFileNameAsString();
+        final boolean zipLike = recursiveStore && (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
+        return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData, zipLike);
     }
 
-    public boolean optimiseJar(ZipArchive archive, OutputStream outputStream) throws IOException {
+    private CompressionResult asStored(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
+        byte[] uncompressedData;
+
+        if (compressionMethod == ZipCompressions.DEFLATED) {
+            uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
+        } else if (compressionMethod == ZipCompressions.STORED) {
+            uncompressedData = compressedData;
+        } else {
+            uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
+        }
+
+        final String localFileName = fileHeader.getFileNameAsString();
+        final boolean zipLike = recursiveStore && (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
+
+        if (zipLike) {
+            try {
+                final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData);
+                return asRecursiveStoredZip(zipInZip);
+            } catch (final Exception e) {
+                // TODO Handle errors more gracefully
+                e.printStackTrace();
+            }
+        }
+
+        return new CompressionResult(ZipCompressions.STORED, uncompressedData, crc32, uncompressedSize, uncompressedSize);
+    }
+
+    private boolean optimiseJar(boolean forceRecursiveStore, ZipArchive archive, OutputStream outputStream) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
         int offset = 0;
@@ -194,7 +258,19 @@ public class JarTighten {
             int compressionMethod = fileHeader.getCompressionMethod();
             byte[] fileData = ByteDataUtil.toByteArray(fileHeader.getFileData());
 
-            if (recompress) {
+            if (forceRecursiveStore) {
+                try {
+                    final CompressionResult stored = asStored(fileHeader, crc32, realUncompressedSize, compressionMethod, fileData);
+                    compressionMethod = stored.compressionMethod;
+                    fileData = stored.compressedData;
+                    crc32 = stored.crc32;
+                    realUncompressedSize = stored.uncompressedSize;
+                    realCompressedSize = stored.compressedSize;
+                } catch (final Exception e) {
+                    // TODO Handle errors more gracefully
+                    e.printStackTrace();
+                }
+            } else if (recompress) {
                 try {
                     final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData);
                     compressionMethod = newBest.compressionMethod;
@@ -350,6 +426,10 @@ public class JarTighten {
         final byte[] zipComment = ByteDataUtil.toByteArray(end.getZipComment());
         outputStream.write(zipComment);
         return true;
+    }
+
+    public boolean optimiseJar(ZipArchive archive, OutputStream outputStream) throws IOException {
+        return optimiseJar(false, archive, outputStream);
     }
 
     public boolean optimiseJar(Path input, Path output, boolean overwrite) throws IOException {

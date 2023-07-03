@@ -40,6 +40,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--recompress-store", "-s" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Check uncompressed size, stores uncompressed if smaller")
     boolean recompressStore = true;
 
+    @Option(names = { "--recursive-store", "-R" }, defaultValue = "false", description = "Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller")
+    boolean recursiveStore = false;
+
     @Override
     public Integer call() throws Exception {
         if (!inputFile.toFile().isFile()) {
@@ -50,7 +53,7 @@ public class CMDMain implements Callable<Integer> {
             throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
         return !jarTighten.optimiseJar(inputFile, outputFile, true) ? 1 : CommandLine.ExitCode.OK;
     }
 

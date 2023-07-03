@@ -47,6 +47,10 @@ public abstract class JarTightenTask extends DefaultTask {
 
     @Input
     @Optional
+    public abstract Property<Boolean> getRecursiveStore();
+
+    @Input
+    @Optional
     public abstract ListProperty<String> getExcludes();
 
     @TaskAction
@@ -60,7 +64,8 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
+        final boolean recursiveStore = getRecursiveStore().getOrElse(false);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
         jarTighten.optimiseJar(inputPath, outputPath, true);
     }
 }
