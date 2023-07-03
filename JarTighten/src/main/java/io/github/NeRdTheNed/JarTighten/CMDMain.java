@@ -1,5 +1,6 @@
 package io.github.NeRdTheNed.JarTighten;
 
+import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,11 +50,11 @@ public class CMDMain implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         if (!inputFile.toFile().isFile()) {
-            throw new Exception("Argument " + inputFile.getFileName() + " is not a file!");
+            throw new FileNotFoundException("Input file name argument " + inputFile.getFileName() + " is not a file!");
         }
 
         if (outputFile.toFile().isFile()) {
-            throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
+            throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
         final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
