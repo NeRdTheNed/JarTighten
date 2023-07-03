@@ -60,6 +60,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
-        JarTighten.optimiseJar(inputPath, outputPath, true, excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
+        jarTighten.optimiseJar(inputPath, outputPath, true);
     }
 }

@@ -50,7 +50,8 @@ public class CMDMain implements Callable<Integer> {
             throw new Exception("Argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        return !JarTighten.optimiseJar(inputFile, outputFile, true, excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore) ? 1 : CommandLine.ExitCode.OK;
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
+        return !jarTighten.optimiseJar(inputFile, outputFile, true) ? 1 : CommandLine.ExitCode.OK;
     }
 
     public static void main(String[] args) {

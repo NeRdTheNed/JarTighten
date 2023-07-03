@@ -25,6 +25,24 @@ import software.coley.llzip.format.model.ZipArchive;
 import software.coley.llzip.util.ByteDataUtil;
 
 public class JarTighten {
+    private final List<String> excludes;
+    private final boolean removeTimestamps;
+    private final boolean removeFileLength;
+    private final boolean removeFileNames;
+    private final boolean recompressZopfli;
+    private final boolean recompressStandard;
+    private final boolean recompressStore;
+
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) {
+        this.excludes = excludes;
+        this.removeTimestamps = removeTimestamps;
+        this.removeFileLength = removeFileLength;
+        this.removeFileNames = removeFileNames;
+        this.recompressZopfli = recompressZopfli;
+        this.recompressStandard = recompressStandard;
+        this.recompressStore = recompressStore;
+    }
+
     private static final class EntryData {
         final int crc32;
         final int uncompressedSize;
@@ -72,20 +90,20 @@ public class JarTighten {
         out.write((value >> 24) & 0xFF);
     }
 
-    private static final Zopfli zopfliCompressor = new Zopfli(8 << 20);
-    private static final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
+    private final Zopfli zopfliCompressor = new Zopfli(8 << 20);
+    private final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
 
     // TODO Option customization
-    private static byte[] compressZopfli(byte[] uncompressedData) throws IOException {
+    private byte[] compressZopfli(byte[] uncompressedData) throws IOException {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         zopfliCompressor.compress(options, uncompressedData, bos);
         return bos.toByteArray();
     }
 
-    private static final Deflater javaCompressor = new Deflater(Deflater.BEST_COMPRESSION, true);
+    private final Deflater javaCompressor = new Deflater(Deflater.BEST_COMPRESSION, true);
 
     // TODO Option customization
-    private static byte[] compressStandard(byte[] uncompressedData) {
+    private byte[] compressStandard(byte[] uncompressedData) {
         javaCompressor.setInput(uncompressedData);
         javaCompressor.finish();
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -100,9 +118,9 @@ public class JarTighten {
         return bos.toByteArray();
     }
 
-    private static final DeflateDecompressor decomp = new DeflateDecompressor();
+    private final DeflateDecompressor decomp = new DeflateDecompressor();
 
-    private static CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) {
+    private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData) {
         if (recompressStandard) {
             // TODO Option customization
             final byte[] recompressedData = compressStandard(uncompressedData);
@@ -143,7 +161,7 @@ public class JarTighten {
         return new CompressionResult(compressionMethod, compressedData, crc32, uncompressedSize, compressedSize);
     }
 
-    private static CompressionResult findSmallestOutput(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
+    private CompressionResult findSmallestOutput(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData) throws IOException {
         final byte[] uncompressedData;
 
         if (compressionMethod == ZipCompressions.DEFLATED) {
@@ -154,10 +172,10 @@ public class JarTighten {
             uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
         }
 
-        return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData, recompressZopfli, recompressStandard, recompressStore);
+        return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData);
     }
 
-    public static boolean optimiseJar(ZipArchive archive, OutputStream outputStream, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
+    public boolean optimiseJar(ZipArchive archive, OutputStream outputStream) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
         int offset = 0;
@@ -178,7 +196,7 @@ public class JarTighten {
 
             if (recompress) {
                 try {
-                    final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData, recompressZopfli, recompressStandard, recompressStore);
+                    final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData);
                     compressionMethod = newBest.compressionMethod;
                     fileData = newBest.compressedData;
                     crc32 = newBest.crc32;
@@ -334,7 +352,7 @@ public class JarTighten {
         return true;
     }
 
-    public static boolean optimiseJar(Path input, Path output, boolean overwrite, List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore) throws IOException {
+    public boolean optimiseJar(Path input, Path output, boolean overwrite) throws IOException {
         final ZipArchive archive = ZipIO.readJvm(input);
         final File outputFile = output.toFile();
 
@@ -348,7 +366,7 @@ public class JarTighten {
 
         try
             (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
-            return optimiseJar(archive, outputStream, excludes, removeTimestamps, removeFileLength, removeFileNames, recompressZopfli, recompressStandard, recompressStore);
+            return optimiseJar(archive, outputStream);
         }
     }
 
