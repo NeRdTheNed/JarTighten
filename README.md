@@ -58,4 +58,17 @@ jartighten {
 }
 
 build.finalizedBy(jartighten)
+
+// You can also create custom JarTighten tasks:
+import io.github.NeRdTheNed.JarTighten.JarTightenTask
+
+tasks.register('jartightenCustom', JarTightenTask) {
+    // Set the input and output files
+    inputFile = layout.projectDirectory.file(...)
+    outputFile = layout.projectDirectory.file(...)
+
+    // Configure task etc
+}
+
+build.finalizedBy(jartightenCustom)
 ```
