@@ -14,6 +14,15 @@ plugins {
 apply plugin: 'java'
 
 group = 'com.github.NeRdTheNed.JarTighten'
+version = project.version
+
+final def build_release = System.getenv("BUILD_RELEASE") == "true"
+
+// Add snapshot suffix to version if not building a release.
+// To build a release, set the environment variable BUILD_RELEASE to true.
+if (!build_release) {
+    version += "-SNAPSHOT"
+}
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
