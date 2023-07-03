@@ -27,14 +27,23 @@ import software.coley.llzip.format.model.ZipArchive;
 import software.coley.llzip.util.ByteDataUtil;
 
 public class JarTighten {
+    /** Files to exclude from optimisations which might hide them from standard zip libraries */
     private final List<String> excludes;
+    /** Remove timestamps */
     private final boolean removeTimestamps;
+    /** Remove file length from local file headers */
     private final boolean removeFileLength;
+    /** Remove file names from local file headers */
     private final boolean removeFileNames;
+    /** Remove file comments and zip comment */
     private final boolean removeComments;
+    /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     private final boolean recompressZopfli;
+    /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
     private final boolean recompressStandard;
+    /** Check uncompressed size, stores uncompressed if smaller */
     private final boolean recompressStore;
+    /** Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     private final boolean recursiveStore;
 
     public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
