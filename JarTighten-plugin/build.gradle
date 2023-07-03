@@ -81,7 +81,7 @@ gradlePlugin {
 
     plugins {
         jartightenPlugin {
-            id = 'com.github.nerdthened.jartighten'
+            id = 'io.github.nerdthened.jartighten'
             implementationClass = 'com.github.NeRdTheNed.JarTighten.JarTightenPlugin'
             displayName = 'JarTighten Plugin'
             description = 'Gradle plugin to reduce the size of jar files'
