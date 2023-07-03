@@ -1,4 +1,4 @@
-package com.github.NeRdTheNed.JarTighten;
+package io.github.NeRdTheNed.JarTighten;
 
 import java.io.IOException;
 import java.nio.file.Path;

@@ -18,7 +18,7 @@ tasks.withType(AbstractArchiveTask).configureEach {
 
 apply plugin: 'java'
 
-group = 'com.github.NeRdTheNed.JarTighten'
+group = 'io.github.NeRdTheNed.JarTighten'
 version = project.version
 
 final def build_release = System.getenv("BUILD_RELEASE") == "true"
@@ -61,8 +61,8 @@ repositories {
 
 shadowJar {
     minimize()
-    relocate 'ru.eustas.zopfli', 'com.github.NeRdTheNed.JarTighten.shadow.zopfli'
-    relocate 'software.coley.llzip', 'com.github.NeRdTheNed.JarTighten.shadow.llzip'
+    relocate 'ru.eustas.zopfli', 'io.github.NeRdTheNed.JarTighten.shadow.zopfli'
+    relocate 'software.coley.llzip', 'io.github.NeRdTheNed.JarTighten.shadow.llzip'
 
     dependencies {
         exclude(dependency('org.slf4j:.*'))
@@ -82,7 +82,7 @@ gradlePlugin {
     plugins {
         jartightenPlugin {
             id = 'io.github.nerdthened.jartighten'
-            implementationClass = 'com.github.NeRdTheNed.JarTighten.JarTightenPlugin'
+            implementationClass = 'io.github.NeRdTheNed.JarTighten.JarTightenPlugin'
             displayName = 'JarTighten Plugin'
             description = 'Gradle plugin to reduce the size of jar files'
             tags.set(['jar', 'zip', 'compression', 'compress'])

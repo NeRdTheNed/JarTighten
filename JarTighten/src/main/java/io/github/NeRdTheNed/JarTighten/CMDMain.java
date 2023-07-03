@@ -1,4 +1,4 @@
-package com.github.NeRdTheNed.JarTighten;
+package io.github.NeRdTheNed.JarTighten;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

@@ -16,7 +16,7 @@ tasks.withType(AbstractArchiveTask).configureEach {
 
 apply plugin: 'java'
 
-group = 'com.github.NeRdTheNed.JarTighten'
+group = 'io.github.NeRdTheNed.JarTighten'
 version = project.version
 
 final def build_release = System.getenv("BUILD_RELEASE") == "true"
@@ -65,7 +65,7 @@ dependencies {
 jar {
     manifest {
         attributes(
-                'Main-Class': 'com.github.NeRdTheNed.JarTighten.CMDMain'
+                'Main-Class': 'io.github.NeRdTheNed.JarTighten.CMDMain'
         )
     }
 }

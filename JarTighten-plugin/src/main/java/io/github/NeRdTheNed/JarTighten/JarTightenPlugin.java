@@ -1,4 +1,4 @@
-package com.github.NeRdTheNed.JarTighten;
+package io.github.NeRdTheNed.JarTighten;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
