@@ -37,6 +37,6 @@ jobs:
           draft: true
           prerelease: false
           files: |
-            JarTighten/build/libs
-            JarTighten-lib/build/libs
-            JarTighten-plugin/build/libs
+            JarTighten/build/libs/*
+            JarTighten-lib/build/libs/*
+            JarTighten-plugin/build/libs/*
