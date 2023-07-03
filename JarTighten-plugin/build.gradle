@@ -68,8 +68,6 @@ shadowJar {
 
 dependencies {
     implementation project(':JarTighten-lib')
-
-    shadow project(':JarTighten-lib')
 }
 
 gradlePlugin {
