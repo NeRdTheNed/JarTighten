@@ -46,7 +46,7 @@ public class JarTighten {
     private final boolean recompressStandard;
     /** Check uncompressed size, stores uncompressed if smaller */
     private final boolean recompressStore;
-    /** Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
+    /** Store the contents of all embedded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     private final boolean recursiveStore;
 
     /** Creates a JarTighten instance with the given options. */
@@ -136,7 +136,7 @@ public class JarTighten {
 
     /**
      * Compress using Zopfli deflate compression.
-     * TODO Option customization
+     * TODO Option customisation
      *
      * @param uncompressedData uncompressed data
      * @return compressed data
@@ -152,7 +152,7 @@ public class JarTighten {
 
     /**
      * Compress using the best standard JVM deflate compression.
-     * TODO Option customization
+     * TODO Option customisation
      *
      * @param uncompressedData uncompressed data
      * @return compressed data
@@ -176,7 +176,7 @@ public class JarTighten {
     private final CRC32 crc32Calc = new CRC32();
 
     /**
-     * Create a zip file with its contents and all embeded zip or jar files stored uncompressed recursively from the given input.
+     * Create a zip file with its contents and all embedded zip or jar files stored uncompressed recursively from the given input.
      *
      * @param zipInZip the input zip file
      * @return the recursively stored zip file
@@ -209,7 +209,7 @@ public class JarTighten {
      */
     private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
         if (recompressStandard) {
-            // TODO Option customization
+            // TODO Option customisation
             final byte[] recompressedData = compressStandard(uncompressedData);
 
             // TODO Verify data integrity
@@ -223,7 +223,7 @@ public class JarTighten {
 
         if (recompressZopfli) {
             try {
-                // TODO Option customization
+                // TODO Option customisation
                 final byte[] zopfliCompressedData = compressZopfli(uncompressedData);
 
                 // TODO Verify data integrity
@@ -334,7 +334,7 @@ public class JarTighten {
     /**
      * Optimises a ZipArchive, with the configured settings.
      *
-     * @param forceRecursiveStore if true, store the contents of this and all embeded zip or jar files uncompressed recursively
+     * @param forceRecursiveStore if true, store the contents of this and all embedded zip or jar files uncompressed recursively
      * @param archive the ZipArchive to optimise
      * @param outputStream output stream for optimised jar to be written to
      * @return true, if successful
