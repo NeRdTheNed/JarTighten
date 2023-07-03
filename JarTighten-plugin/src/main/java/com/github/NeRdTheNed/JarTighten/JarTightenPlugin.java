@@ -18,6 +18,8 @@ public class JarTightenPlugin implements Plugin<Project> {
                 jarTightenTask.getRemoveTimestamps().convention(false);
                 jarTightenTask.getRemoveFileLength().convention(false);
                 jarTightenTask.getRemoveFileNames().convention(false);
+                jarTightenTask.getRemoveComments().convention(false);
+                jarTightenTask.getRecursiveStore().convention(false);
                 jarTightenTask.getInputFile().convention(jarTask.getArchiveFile());
                 jarTightenTask.getOutputFile().convention(jarTask.getArchiveFile());
             });
