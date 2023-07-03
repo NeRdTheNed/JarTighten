@@ -8,4 +8,42 @@ JarTighten is a jar file size optimiser, including optimisations based on quirks
 
 ## Usage
 
-JarTighten is currently available as a command line program. A Gradle plugin is in development.
+JarTighten is available as a command line program:
+
+```
+Usage: JarTighten [-chlnrRstVz] [-e=<excludes>]... <inputFile> <outputFile>
+Jar file size optimiser
+      <inputFile>                The file to optimise
+      <outputFile>               The optimised file
+  -c, --remove-comments          Remove file comments and zip comment
+  -e, --exclude=<excludes>       Files to exclude from optimisations which might hide them from standard zip libraries
+  -h, --help                     Show this help message and exit.
+  -l, --remove-file-length       Remove file length from local file headers
+  -n, --remove-file-names        Remove file names from local file headers
+  -r, --[no-]recompress-standard Recompress files with standard Java deflate implementation, uses compressed output if smaller
+  -R, --recursive-store          Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
+  -s, --[no-]recompress-store    Check uncompressed size, stores uncompressed if smaller
+  -t, --remove-timestamps        Remove timestamps
+  -V, --version                  Print version information and exit.
+  -z, --recompress-zopfli        Recompress files with CafeUndZopfli, uses compressed output if smaller
+```
+
+A Gradle plugin with equivalent options is planned to be published:
+
+```groovy
+jartighten {
+    // By default, JarTighten will optimise the output of the jar task.
+    //inputFile = layout.projectDirectory.file(...)
+    //outputFile = layout.projectDirectory.file(...)
+
+    // Remove file timestamps
+    removeTimestamps = true
+    // Enable Zopfli recompression (may require configuring Gradle to use more memory)
+    recompressZopfli = true
+
+    // Exclude a file from optimisations which might hide them from standard zip libraries 
+    //excludes = ["some/package/SomeFile.ext"]
+}
+
+build.finalizedBy(jartighten)
+```
