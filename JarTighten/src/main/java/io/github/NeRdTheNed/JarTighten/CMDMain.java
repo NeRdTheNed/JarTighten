@@ -20,7 +20,7 @@ public class CMDMain implements Callable<Integer> {
     @Parameters(index = "1", description = "The optimised file")
     private Path outputFile;
 
-    @Option(names = { "--exclude", "-e" }, description = "Files to exclude from optimisations which might hide them from standard zip libraries")
+    @Option(names = { "--exclude", "-e" }, paramLabel = "<filename>", description = "Files to exclude from optimisations which might hide them from standard zip libraries")
     List<String> excludes;
 
     @Option(names = { "--remove-timestamps", "-t" }, defaultValue = "false", description = "Remove timestamps")
