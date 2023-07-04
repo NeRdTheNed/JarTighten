@@ -193,9 +193,6 @@ public class JarTighten {
         return new CompressionResult(ZipCompressions.STORED, storedJar, crc32, uncompressedSize, uncompressedSize);
     }
 
-    /** Cached decompressor */
-    private final DeflateDecompressor decomp = new DeflateDecompressor();
-
     /**
      * Find the smallest way to store the given input file.
      *
@@ -268,6 +265,32 @@ public class JarTighten {
         return new CompressionResult(compressionMethod, compressedData, crc32, uncompressedSize, compressedSize);
     }
 
+    /** Cached decompressor */
+    private final DeflateDecompressor decomp = new DeflateDecompressor();
+
+    /**
+     * Decompress the data for the given LocalFileHeader,
+     * or return the uncompressed data if the compression method is store.
+     *
+     * @param fileHeader the local file header
+     * @param compressionMethod the compression method
+     * @param compressedData compressed data
+     * @return uncompressed data
+     */
+    private byte[] decompressData(LocalFileHeader fileHeader, int compressionMethod, byte[] compressedData) throws IOException {
+        final byte[] uncompressedData;
+
+        if (compressionMethod == ZipCompressions.DEFLATED) {
+            uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
+        } else if (compressionMethod == ZipCompressions.STORED) {
+            uncompressedData = compressedData;
+        } else {
+            uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
+        }
+
+        return uncompressedData;
+    }
+
     /**
      * Find the smallest way to store the given input file.
      *
@@ -280,16 +303,7 @@ public class JarTighten {
      * @return the best compressed result with the configured settings
      */
     private CompressionResult findSmallestOutput(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData) throws IOException {
-        final byte[] uncompressedData;
-
-        if (compressionMethod == ZipCompressions.DEFLATED) {
-            uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
-        } else if (compressionMethod == ZipCompressions.STORED) {
-            uncompressedData = compressedData;
-        } else {
-            uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
-        }
-
+        final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
         final String localFileName = fileHeader.getFileNameAsString();
         final boolean zipLike = recursiveStore && (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
         return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData, zipLike);
@@ -306,16 +320,7 @@ public class JarTighten {
      * @return a stored CompressionResult from the given input
      */
     private CompressionResult asStored(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
-        byte[] uncompressedData;
-
-        if (compressionMethod == ZipCompressions.DEFLATED) {
-            uncompressedData = ByteDataUtil.toByteArray(decomp.decompress(fileHeader, fileHeader.getFileData()));
-        } else if (compressionMethod == ZipCompressions.STORED) {
-            uncompressedData = compressedData;
-        } else {
-            uncompressedData = ByteDataUtil.toByteArray(ZipCompressions.decompress(fileHeader));
-        }
-
+        final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
         final String localFileName = fileHeader.getFileNameAsString();
         final boolean zipLike = recursiveStore && (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
 
