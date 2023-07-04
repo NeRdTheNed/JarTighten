@@ -41,6 +41,8 @@ public class JarTighten {
     private final boolean removeFileNames;
     /** Remove file comments and zip comment */
     private final boolean removeComments;
+    /** Remove extra field */
+    private final boolean removeExtra;
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     private final boolean recompressZopfli;
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
@@ -51,12 +53,13 @@ public class JarTighten {
     private final boolean recursiveStore;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
         this.removeFileNames = removeFileNames;
         this.removeComments = removeComments;
+        this.removeExtra = removeExtra;
         this.recompressZopfli = recompressZopfli;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
@@ -442,12 +445,12 @@ public class JarTighten {
             // File name length
             writeShortLE(outputStream, fileNameLength);
             // Extra field length
-            final int extraFieldLength = fileHeader.getExtraFieldLength();
+            final int extraFieldLength = removeExtra ? 0 : fileHeader.getExtraFieldLength();
             writeShortLE(outputStream, extraFieldLength);
             // File name
             outputStream.write(fileName);
             // Extra field
-            final byte[] extra = ByteDataUtil.toByteArray(fileHeader.getExtraField());
+            final byte[] extra = removeExtra ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
             outputStream.write(extra);
             // Compressed data
             // TODO This feels wrong?
@@ -517,7 +520,7 @@ public class JarTighten {
             final int fileNameLength = centralDir.getFileNameLength();
             writeShortLE(outputStream, fileNameLength);
             // Extra field length
-            final int extraFieldLength = centralDir.getExtraFieldLength();
+            final int extraFieldLength = removeExtra ? 0 : centralDir.getExtraFieldLength();
             writeShortLE(outputStream, extraFieldLength);
             // File comment length
             final int fileCommentLength = removeComments ? 0 : centralDir.getFileCommentLength();
@@ -534,7 +537,7 @@ public class JarTighten {
             final byte[] fileName = ByteDataUtil.toByteArray(centralDir.getFileName());
             outputStream.write(fileName);
             // Extra field
-            final byte[] extra = ByteDataUtil.toByteArray(centralDir.getExtraField());
+            final byte[] extra = removeExtra ? new byte[] { } : ByteDataUtil.toByteArray(centralDir.getExtraField());
             outputStream.write(extra);
             // File comment
             final byte[] fileComment = removeComments ? new byte[] { } : ByteDataUtil.toByteArray(centralDir.getFileComment());

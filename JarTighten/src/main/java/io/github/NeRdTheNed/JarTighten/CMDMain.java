@@ -36,6 +36,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--remove-comments", "-c" }, defaultValue = "false", description = "Remove file comments and zip comment")
     boolean removeComments = false;
 
+    @Option(names = { "--remove-extra", "-E" }, defaultValue = "false", description = "Remove extra field")
+    boolean removeExtra = false;
+
     @Option(names = { "--recompress-zopfli", "-z" }, defaultValue = "false", description = "Recompress files with CafeUndZopfli, uses compressed output if smaller")
     boolean recompressZopfli = false;
 
@@ -61,7 +64,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 
