@@ -292,6 +292,17 @@ public class JarTighten {
     }
 
     /**
+     * Checks if the local file header may contain a zip based file.
+     *
+     * @param fileHeader the local file header
+     * @return if the file is possibly a zip based file
+     */
+    private boolean isFilePossiblyZipLike(LocalFileHeader fileHeader) {
+        final String localFileName = fileHeader.getFileNameAsString();
+        return (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
+    }
+
+    /**
      * Find the smallest way to store the given input file.
      *
      * @param fileHeader the input file header
@@ -304,8 +315,7 @@ public class JarTighten {
      */
     private CompressionResult findSmallestOutput(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData) throws IOException {
         final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
-        final String localFileName = fileHeader.getFileNameAsString();
-        final boolean zipLike = recursiveStore && (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
+        final boolean zipLike = recursiveStore && isFilePossiblyZipLike(fileHeader);
         return findSmallestOutput(uncompressedData, crc32, uncompressedSize, compressedSize, compressionMethod, compressedData, zipLike);
     }
 
@@ -321,10 +331,8 @@ public class JarTighten {
      */
     private CompressionResult asStored(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
         final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
-        final String localFileName = fileHeader.getFileNameAsString();
-        final boolean zipLike = recursiveStore && (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
 
-        if (zipLike) {
+        if (recursiveStore && isFilePossiblyZipLike(fileHeader)) {
             try {
                 final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData);
                 return asRecursiveStoredZip(zipInZip);
