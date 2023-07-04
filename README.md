@@ -28,9 +28,14 @@ Jar file size optimiser
   -z, --recompress-zopfli        Recompress files with CafeUndZopfli, uses compressed output if smaller
 ```
 
-A Gradle plugin with equivalent options is planned to be published:
+A Gradle plugin with equivalent options is also available on the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/io.github.nerdthened.jartighten):
 
 ```groovy
+plugins {
+    ...
+    id 'io.github.nerdthened.jartighten' version '1.0.0'
+}
+
 jartighten {
     // By default, JarTighten will optimise the output of the jar task.
     //inputFile = layout.projectDirectory.file(...)
