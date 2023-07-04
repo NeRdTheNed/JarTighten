@@ -101,6 +101,9 @@ public class JarTighten {
     /** Zip date constant, used when removing timestamps */
     private static final int EARLIEST_DATE = 0x0021;
 
+    /** Zip version 2.0, minimum required version for deflate compression */
+    private static final int ZIP_VERSION_2_0 = 0x14;
+
     /**
      * Write a short to the output stream as bytes in LE order.
      *
@@ -405,8 +408,8 @@ public class JarTighten {
             int versionNeeded = fileHeader.getVersionNeededToExtract();
 
             // If deflate compression is used, make sure that the version needed field is at least 2.0
-            if ((compressionMethod == ZipCompressions.DEFLATED) && (versionNeeded < 0x14)) {
-                versionNeeded = 0x14;
+            if ((compressionMethod == ZipCompressions.DEFLATED) && (versionNeeded < ZIP_VERSION_2_0)) {
+                versionNeeded = ZIP_VERSION_2_0;
             }
 
             writeShortLE(outputStream, versionNeeded);
@@ -485,8 +488,8 @@ public class JarTighten {
             int versionNeeded = centralDir.getVersionNeededToExtract();
 
             // If deflate compression is used, make sure that the version needed field is at least 2.0
-            if ((entryData.compressionMethod == ZipCompressions.DEFLATED) && (versionNeeded < 0x14)) {
-                versionNeeded = 0x14;
+            if ((entryData.compressionMethod == ZipCompressions.DEFLATED) && (versionNeeded < ZIP_VERSION_2_0)) {
+                versionNeeded = ZIP_VERSION_2_0;
             }
 
             writeShortLE(outputStream, versionNeeded);
