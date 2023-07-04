@@ -1,6 +1,7 @@
 package io.github.NeRdTheNed.JarTighten;
 
 import java.io.FileNotFoundException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,18 +48,21 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--recursive-store", "-R" }, defaultValue = "false", description = "Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller")
     boolean recursiveStore = false;
 
+    @Option(names = { "--overwrite", "-o" }, defaultValue = "false", description = "Overwrite existing output file")
+    boolean overwrite = false;
+
     @Override
     public Integer call() throws Exception {
-        if (!inputFile.toFile().isFile()) {
+        if (!Files.isRegularFile(inputFile)) {
             throw new FileNotFoundException("Input file name argument " + inputFile.getFileName() + " is not a file!");
         }
 
-        if (outputFile.toFile().isFile()) {
+        if (!overwrite && Files.isRegularFile(outputFile)) {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
         final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
-        return !jarTighten.optimiseJar(inputFile, outputFile, true) ? 1 : CommandLine.ExitCode.OK;
+        return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 
     public static void main(String[] args) {
