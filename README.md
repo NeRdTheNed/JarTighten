@@ -32,7 +32,6 @@ A Gradle plugin with equivalent options is also available on the [Gradle Plugin 
 
 ```groovy
 plugins {
-    ...
     id 'io.github.nerdthened.jartighten' version '1.0.0'
 }
 
