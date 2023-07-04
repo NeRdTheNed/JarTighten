@@ -402,7 +402,14 @@ public class JarTighten {
             // Header
             writeIntLE(outputStream, ZipPatterns.LOCAL_FILE_HEADER_QUAD);
             // Minimum version
-            writeShortLE(outputStream, fileHeader.getVersionNeededToExtract());
+            int versionNeeded = fileHeader.getVersionNeededToExtract();
+
+            // If deflate compression is used, make sure that the version needed field is at least 2.0
+            if ((compressionMethod == ZipCompressions.DEFLATED) && (versionNeeded < 0x14)) {
+                versionNeeded = 0x14;
+            }
+
+            writeShortLE(outputStream, versionNeeded);
             // General purpose bit flag
             int bitFlag = fileHeader.getGeneralPurposeBitFlag();
             // Clear the "Data Descriptor" / EXTSIG flag
