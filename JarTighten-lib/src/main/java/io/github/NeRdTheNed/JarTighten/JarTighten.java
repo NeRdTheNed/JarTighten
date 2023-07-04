@@ -482,7 +482,14 @@ public class JarTighten {
             // Made by
             writeShortLE(outputStream, centralDir.getVersionMadeBy());
             // Minimum version
-            writeShortLE(outputStream, centralDir.getVersionNeededToExtract());
+            int versionNeeded = centralDir.getVersionNeededToExtract();
+
+            // If deflate compression is used, make sure that the version needed field is at least 2.0
+            if ((entryData.compressionMethod == ZipCompressions.DEFLATED) && (versionNeeded < 0x14)) {
+                versionNeeded = 0x14;
+            }
+
+            writeShortLE(outputStream, versionNeeded);
             // General purpose bit flag
             int bitFlag = centralDir.getGeneralPurposeBitFlag();
             // Clear the "Data Descriptor" / EXTSIG flag
