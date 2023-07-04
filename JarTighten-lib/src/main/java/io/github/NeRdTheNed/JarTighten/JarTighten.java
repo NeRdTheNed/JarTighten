@@ -1,12 +1,12 @@
 package io.github.NeRdTheNed.JarTighten;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Supplier;
@@ -557,21 +557,40 @@ public class JarTighten {
      * @return true, if successful
      */
     public boolean optimiseJar(Path input, Path output, boolean overwrite) throws IOException {
-        final ZipArchive archive = ZipIO.readJvm(input);
-        final File outputFile = output.toFile();
+        if (!Files.isRegularFile(input)) {
+            return false;
+        }
 
-        if (outputFile.exists()) {
+        final ZipArchive archive = ZipIO.readJvm(input);
+        Path possibleTempPath = output;
+        boolean handleSame = false;
+
+        if (Files.isRegularFile(output)) {
             if (!overwrite) {
                 return false;
             }
 
-            Files.delete(output);
+            if (Files.isSameFile(input, output)) {
+                handleSame = true;
+                possibleTempPath = Files.createTempFile("JarTighten-temp-", ".jar");
+                possibleTempPath.toFile().deleteOnExit();
+            } else {
+                Files.delete(output);
+            }
         }
 
+        boolean returnVal = false;
+
         try
-            (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
-            return optimiseJar(archive, outputStream);
+            (FileOutputStream outputStream = new FileOutputStream(possibleTempPath.toFile())) {
+            returnVal = optimiseJar(archive, outputStream);
         }
+
+        if (returnVal && handleSame) {
+            Files.copy(possibleTempPath, output, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        return returnVal;
     }
 
 }
