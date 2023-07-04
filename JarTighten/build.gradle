@@ -74,14 +74,20 @@ tasks.register('jartightenShadow', JarTightenTask) {
     outputFile = layout.projectDirectory.file('build/libs/' + project.name + '-' + version + '-all.jar')
 
     removeTimestamps = true
-    //recompressZopfli = true
+
+    if (build_release) {
+        recompressZopfli = true
+    }
 }
 
 build.finalizedBy(jartightenShadow)
 
 jartighten {
     removeTimestamps = true
-    //recompressZopfli = true
+
+    if (build_release) {
+        recompressZopfli = true
+    }
 }
 
 build.finalizedBy(jartighten)
