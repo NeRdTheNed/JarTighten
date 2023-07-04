@@ -8,6 +8,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'io.github.nerdthened.jartighten' version '1.0.0'
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
@@ -64,6 +65,27 @@ shadowJar {
     archiveClassifier = 'all'
 }
 
+import io.github.NeRdTheNed.JarTighten.JarTightenTask
+
+tasks.register('jartightenShadow', JarTightenTask) {
+    dependsOn(shadowJar)
+
+    inputFile = layout.projectDirectory.file('build/libs/' + project.name + '-' + version + '-all.jar')
+    outputFile = layout.projectDirectory.file('build/libs/' + project.name + '-' + version + '-all.jar')
+
+    removeTimestamps = true
+    //recompressZopfli = true
+}
+
+build.finalizedBy(jartightenShadow)
+
+jartighten {
+    removeTimestamps = true
+    //recompressZopfli = true
+}
+
+build.finalizedBy(jartighten)
+
 dependencies {
     implementation 'info.picocli:picocli:4.7.4'
     annotationProcessor 'info.picocli:picocli-codegen:4.7.4'
@@ -81,5 +103,3 @@ jar {
         )
     }
 }
-
-build.finalizedBy(shadowJar)
