@@ -42,7 +42,7 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--remove-directory-entries", "-d" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove directory entries")
     boolean removeDirectoryEntries = true;
 
-    @Option(names = { "--deduplicate-entries", "-D" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Deduplicate local file header entries with the same compressed contents")
+    @Option(names = { "--deduplicate-entries", "-D" }, defaultValue = "false", description = "Deduplicate local file header entries with the same compressed contents")
     boolean deduplicateEntries = true;
 
     @Option(names = { "--recompress-zopfli", "-z" }, defaultValue = "false", description = "Recompress files with CafeUndZopfli, uses compressed output if smaller")

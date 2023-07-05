@@ -98,7 +98,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean removeComments = getRemoveComments().getOrElse(false);
         final boolean removeExtra = getRemoveExtra().getOrElse(false);
         final boolean removeDirectoryEntries = getRemoveDirectoryEntries().getOrElse(true);
-        final boolean deduplicateEntries = getDeduplicateEntries().getOrElse(true);
+        final boolean deduplicateEntries = getDeduplicateEntries().getOrElse(false);
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
