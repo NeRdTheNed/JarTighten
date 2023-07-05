@@ -8,7 +8,8 @@ plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id 'com.gradle.plugin-publish' version '1.1.0'
+    id 'com.gradle.plugin-publish' version '1.2.0'
+    id 'io.github.nerdthened.jartighten' version '1.0.0'
 }
 
 tasks.withType(AbstractArchiveTask).configureEach {
@@ -69,6 +70,30 @@ shadowJar {
     }
 
     archiveClassifier = ''
+}
+
+jartighten {
+    dependsOn(shadowJar)
+
+    inputFile = layout.projectDirectory.file('build/libs/' + project.name + '-' + version + '.jar')
+    outputFile = layout.projectDirectory.file('build/libs/' + project.name + '-' + version + '.jar')
+
+    removeTimestamps = true
+    removeComments = true
+
+    if (build_release) {
+        recompressZopfli = true
+    }
+}
+
+build.finalizedBy(jartighten)
+publishPlugins.dependsOn(jartighten)
+publishToMavenLocal.dependsOn(jartighten)
+
+afterEvaluate {
+    tasks.named("generateMetadataFileForPluginMavenPublication") {
+        dependsOn(jartighten)
+    }
 }
 
 dependencies {
