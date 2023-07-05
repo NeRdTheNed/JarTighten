@@ -43,6 +43,8 @@ public class JarTighten {
     private final boolean removeComments;
     /** Remove extra field */
     private final boolean removeExtra;
+    /** Remove directory entries */
+    private final boolean removeDirectoryEntries;
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     private final boolean recompressZopfli;
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
@@ -53,13 +55,14 @@ public class JarTighten {
     private final boolean recursiveStore;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
         this.removeFileNames = removeFileNames;
         this.removeComments = removeComments;
         this.removeExtra = removeExtra;
+        this.removeDirectoryEntries = removeDirectoryEntries;
         this.recompressZopfli = recompressZopfli;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
@@ -371,7 +374,7 @@ public class JarTighten {
             int realCompressedSize = (int) fileHeader.getCompressedSize();
             int realUncompressedSize = (int) fileHeader.getUncompressedSize();
 
-            if ((realUncompressedSize == 0) || crcToEntryData.containsKey(crc32)) {
+            if ((removeDirectoryEntries && (realUncompressedSize == 0)) || crcToEntryData.containsKey(crc32)) {
                 continue;
             }
 
@@ -479,7 +482,7 @@ public class JarTighten {
             final EntryData entryData = crcToEntryData.get(crc32);
             final int uncompressedSize = entryData.uncompressedSize;
 
-            if ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0)) {
+            if (removeDirectoryEntries && ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0))) {
                 continue;
             }
 
