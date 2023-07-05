@@ -12,28 +12,32 @@ JarTighten is a jar file size optimiser, including optimisations based on quirks
 JarTighten is available as a command line program:
 
 ```
-Usage: JarTighten [-chlnrRstVz] [-e=<excludes>]... <inputFile> <outputFile>
+Usage: JarTighten [-cdDEhlnorRstVz] [-e=<filename>]... <inputFile> <outputFile>
 Jar file size optimiser
-      <inputFile>                The file to optimise
-      <outputFile>               The optimised file
-  -c, --remove-comments          Remove file comments and zip comment
-  -e, --exclude=<excludes>       Files to exclude from optimisations which might hide them from standard zip libraries
-  -h, --help                     Show this help message and exit.
-  -l, --remove-file-length       Remove file length from local file headers
-  -n, --remove-file-names        Remove file names from local file headers
-  -r, --[no-]recompress-standard Recompress files with standard Java deflate implementation, uses compressed output if smaller
-  -R, --recursive-store          Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
-  -s, --[no-]recompress-store    Check uncompressed size, stores uncompressed if smaller
-  -t, --remove-timestamps        Remove timestamps
-  -V, --version                  Print version information and exit.
-  -z, --recompress-zopfli        Recompress files with CafeUndZopfli, uses compressed output if smaller
+      <inputFile>                     The file to optimise
+      <outputFile>                    The optimised file
+  -c, --remove-comments               Remove file comments and zip comment
+  -d, --[no-]remove-directory-entries Remove directory entries
+  -D, --deduplicate-entries           Deduplicate local file header entries with the same compressed contents
+  -e, --exclude=<filename>            Files to exclude from optimisations which might hide them from standard zip libraries
+  -E, --remove-extra                  Remove extra field
+  -h, --help                          Show this help message and exit.
+  -l, --remove-file-length            Remove file length from local file headers
+  -n, --remove-file-names             Remove file names from local file headers
+  -o, --overwrite                     Overwrite existing output file
+  -r, --[no-]recompress-standard      Recompress files with standard Java deflate implementation, uses compressed output if smaller
+  -R, --recursive-store               Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
+  -s, --[no-]recompress-store         Check uncompressed size, stores uncompressed if smaller
+  -t, --remove-timestamps             Remove timestamps
+  -V, --version                       Print version information and exit.
+  -z, --recompress-zopfli             Recompress files with CafeUndZopfli, uses compressed output if smaller
 ```
 
 A Gradle plugin with equivalent options is also available on the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/io.github.nerdthened.jartighten):
 
 ```groovy
 plugins {
-    id 'io.github.nerdthened.jartighten' version '1.0.0'
+    id 'io.github.nerdthened.jartighten' version '1.1.0'
 }
 
 jartighten {
@@ -49,6 +53,12 @@ jartighten {
     //removeFileNames = true
     // Remove file commments and zip comment
     removeComments = true
+    // Remove extra field
+    removeExtra = true
+    // Remove directory entries
+    removeDirectoryEntries = true
+    // Deduplicate local file header entries with the same compressed contents
+    //deduplicateEntries = true
     // Enable Zopfli recompression (very time consuming, may require configuring Gradle to use more memory)
     recompressZopfli = true
     // Disable standard JVM deflate recompression (enabled by default)
