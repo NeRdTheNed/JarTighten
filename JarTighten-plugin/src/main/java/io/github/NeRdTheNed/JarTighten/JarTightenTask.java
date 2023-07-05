@@ -71,6 +71,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRemoveDirectoryEntries();
 
+    /** Deduplicate local file header entries with the same compressed contents */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getDeduplicateEntries();
+
     /** Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     @Input
     @Optional
@@ -93,11 +98,12 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean removeComments = getRemoveComments().getOrElse(false);
         final boolean removeExtra = getRemoveExtra().getOrElse(false);
         final boolean removeDirectoryEntries = getRemoveDirectoryEntries().getOrElse(true);
+        final boolean deduplicateEntries = getDeduplicateEntries().getOrElse(true);
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
         final boolean didSucceed;
 
         try {

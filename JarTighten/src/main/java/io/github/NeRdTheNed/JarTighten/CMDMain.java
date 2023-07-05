@@ -42,6 +42,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--remove-directory-entries", "-d" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Remove directory entries")
     boolean removeDirectoryEntries = true;
 
+    @Option(names = { "--deduplicate-entries", "-D" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Deduplicate local file header entries with the same compressed contents")
+    boolean deduplicateEntries = true;
+
     @Option(names = { "--recompress-zopfli", "-z" }, defaultValue = "false", description = "Recompress files with CafeUndZopfli, uses compressed output if smaller")
     boolean recompressZopfli = false;
 
@@ -67,7 +70,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

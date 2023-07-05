@@ -45,6 +45,8 @@ public class JarTighten {
     private final boolean removeExtra;
     /** Remove directory entries */
     private final boolean removeDirectoryEntries;
+    /** Deduplicate local file header entries with the same compressed contents */
+    private final boolean deduplicateEntries;
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     private final boolean recompressZopfli;
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
@@ -55,7 +57,7 @@ public class JarTighten {
     private final boolean recursiveStore;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
@@ -63,6 +65,7 @@ public class JarTighten {
         this.removeComments = removeComments;
         this.removeExtra = removeExtra;
         this.removeDirectoryEntries = removeDirectoryEntries;
+        this.deduplicateEntries = deduplicateEntries;
         this.recompressZopfli = recompressZopfli;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
@@ -364,7 +367,7 @@ public class JarTighten {
      */
     private boolean optimiseJar(boolean forceRecursiveStore, ZipArchive archive, OutputStream outputStream) throws IOException {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
-        final HashMap<Integer, EntryData> crcToEntryData = new HashMap<>();
+        final HashMap<Integer, EntryData> mapToEntryData = new HashMap<>();
         int offset = 0;
 
         // Local file headers:
@@ -374,7 +377,7 @@ public class JarTighten {
             int realCompressedSize = (int) fileHeader.getCompressedSize();
             int realUncompressedSize = (int) fileHeader.getUncompressedSize();
 
-            if ((removeDirectoryEntries && (realUncompressedSize == 0)) || crcToEntryData.containsKey(crc32)) {
+            if ((removeDirectoryEntries && (realUncompressedSize == 0)) || (deduplicateEntries && mapToEntryData.containsKey(crc32))) {
                 continue;
             }
 
@@ -459,10 +462,23 @@ public class JarTighten {
             // TODO This feels wrong?
             outputStream.write(fileData, 0, realCompressedSize);
             final EntryData entryData = new EntryData(crc32, realUncompressedSize, realCompressedSize, compressionMethod, offset);
-            crcToEntryData.put(crc32, entryData);
 
-            if (crc32 != originalCrc32) {
-                crcToEntryData.put(originalCrc32, entryData);
+            if (deduplicateEntries) {
+                mapToEntryData.put(crc32, entryData);
+
+                if (crc32 != originalCrc32) {
+                    mapToEntryData.put(originalCrc32, entryData);
+                }
+            } else {
+                final CentralDirectoryFileHeader cenDir = fileHeader.getLinkedDirectoryFileHeader();
+
+                if (cenDir != null) {
+                    mapToEntryData.put((int) cenDir.getRelativeOffsetOfLocalHeader(), entryData);
+                } else if (fileHeader.hasOffset()) {
+                    mapToEntryData.put((int) fileHeader.offset(), entryData);
+                } else {
+                    System.err.println("File " + fileHeader.getFileNameAsString() + " somehow had no offset?");
+                }
             }
 
             offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
@@ -474,12 +490,13 @@ public class JarTighten {
         // Central directory file headers:
         for (final CentralDirectoryFileHeader centralDir : archive.getCentralDirectories()) {
             final int crc32 = centralDir.getCrc32();
+            final int key = deduplicateEntries ? crc32 : (int) centralDir.getRelativeOffsetOfLocalHeader();
 
-            if (!crcToEntryData.containsKey(crc32)) {
+            if (!mapToEntryData.containsKey(key)) {
                 continue;
             }
 
-            final EntryData entryData = crcToEntryData.get(crc32);
+            final EntryData entryData = mapToEntryData.get(key);
             final int uncompressedSize = entryData.uncompressedSize;
 
             if (removeDirectoryEntries && ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0))) {
