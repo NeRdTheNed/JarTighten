@@ -17,15 +17,15 @@ import ru.eustas.zopfli.Options;
 import ru.eustas.zopfli.Options.BlockSplitting;
 import ru.eustas.zopfli.Options.OutputFormat;
 import ru.eustas.zopfli.Zopfli;
-import software.coley.llzip.ZipIO;
-import software.coley.llzip.format.ZipPatterns;
-import software.coley.llzip.format.compression.DeflateDecompressor;
-import software.coley.llzip.format.compression.ZipCompressions;
-import software.coley.llzip.format.model.CentralDirectoryFileHeader;
-import software.coley.llzip.format.model.EndOfCentralDirectory;
-import software.coley.llzip.format.model.LocalFileHeader;
-import software.coley.llzip.format.model.ZipArchive;
-import software.coley.llzip.util.ByteDataUtil;
+import software.coley.lljzip.ZipIO;
+import software.coley.lljzip.format.ZipPatterns;
+import software.coley.lljzip.format.compression.DeflateDecompressor;
+import software.coley.lljzip.format.compression.ZipCompressions;
+import software.coley.lljzip.format.model.CentralDirectoryFileHeader;
+import software.coley.lljzip.format.model.EndOfCentralDirectory;
+import software.coley.lljzip.format.model.LocalFileHeader;
+import software.coley.lljzip.format.model.ZipArchive;
+import software.coley.lljzip.util.ByteDataUtil;
 
 /**
  * Jar file size optimiser, including optimisations based on quirks of Java's zip parsing implementation.
@@ -272,7 +272,7 @@ public class JarTighten {
     }
 
     /** Cached decompressor */
-    private final DeflateDecompressor decomp = new DeflateDecompressor();
+    private final DeflateDecompressor decomp = DeflateDecompressor.INSTANCE;
 
     /**
      * Decompress the data for the given LocalFileHeader,
