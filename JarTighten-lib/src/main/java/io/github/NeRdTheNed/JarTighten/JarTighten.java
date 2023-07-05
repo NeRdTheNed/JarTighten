@@ -575,7 +575,7 @@ public class JarTighten {
         // Central directory start disk
         writeShortLE(outputStream, end.getCentralDirectoryStartDisk());
         // TODO What is this?
-        writeShortLE(outputStream, end.getCentralDirectoryStartOffset());
+        writeShortLE(outputStream, centralEntries);
         // Central directory entries
         writeShortLE(outputStream, centralEntries);
         // Central directory size
