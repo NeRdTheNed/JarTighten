@@ -51,6 +51,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRemoveFileLength();
 
+    /** Remove file length from central directory entries */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getRemoveDirEntryLength();
+
     /** Remove file names from local file headers */
     @Input
     @Optional
@@ -99,6 +104,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final List<String> excludes = getExcludes().getOrNull();
         final boolean removeTimestamps = getRemoveTimestamps().getOrElse(false);
         final boolean removeFileLength = getRemoveFileLength().getOrElse(false);
+        final boolean removeDirEntryLength = getRemoveDirEntryLength().getOrElse(false);
         final boolean removeFileNames = getRemoveFileNames().getOrElse(false);
         final boolean removeComments = getRemoveComments().getOrElse(false);
         final boolean removeExtra = getRemoveExtra().getOrElse(false);
@@ -109,7 +115,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
         final boolean didSucceed;
 
         try {

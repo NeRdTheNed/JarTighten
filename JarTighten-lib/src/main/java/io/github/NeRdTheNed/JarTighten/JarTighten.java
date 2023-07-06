@@ -40,6 +40,8 @@ public class JarTighten {
     private final boolean removeTimestamps;
     /** Remove file length from local file headers */
     private final boolean removeFileLength;
+    /** Remove file length from central directory entries */
+    private final boolean removeDirEntryLength;
     /** Remove file names from local file headers */
     private final boolean removeFileNames;
     /** Remove file comments and zip comment */
@@ -62,10 +64,11 @@ public class JarTighten {
     private final boolean sortEntries;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
+        this.removeDirEntryLength = removeDirEntryLength;
         this.removeFileNames = removeFileNames;
         this.removeComments = removeComments;
         this.removeExtra = removeExtra;
@@ -593,10 +596,16 @@ public class JarTighten {
             writeShortLE(outputStream, lastModFileDate);
             // CRC32
             writeIntLE(outputStream, entryData.crc32);
+            // Sizes
+            final String fileNameStr = centralDir.getFileNameAsString();
+            final boolean isManifest = "META-INF/".equals(fileNameStr) || "META-INF/MANIFEST.MF".equals(fileNameStr);
+            final boolean exclude = isManifest || excludes.contains(fileNameStr);
             // Compressed size
-            writeIntLE(outputStream, entryData.compressedSize);
+            final int dirCompressedSize = removeDirEntryLength && !exclude && (entryData.compressionMethod == ZipCompressions.DEFLATED) ? Integer.MAX_VALUE : entryData.compressedSize;
+            writeIntLE(outputStream, dirCompressedSize);
             // Uncompressed size
-            writeIntLE(outputStream, uncompressedSize);
+            final int dirUncompressedSize = removeDirEntryLength && !exclude ? Integer.MAX_VALUE : uncompressedSize;
+            writeIntLE(outputStream, dirUncompressedSize);
             // File name length
             final int fileNameLength = centralDir.getFileNameLength();
             writeShortLE(outputStream, fileNameLength);
