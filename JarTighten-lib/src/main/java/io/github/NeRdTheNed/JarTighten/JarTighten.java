@@ -505,7 +505,8 @@ public class JarTighten {
             final int localUncompressedSize = (removeFileLength && !exclude) ? 0 : realUncompressedSize;
             writeIntLE(outputStream, localUncompressedSize);
             // File name optimisation
-            final boolean isManifest = fileHeader.getFileNameAsString().contains("MANIFEST");
+            final String fileNameStr = fileHeader.getFileNameAsString();
+            final boolean isManifest = "META-INF/".equals(fileNameStr) || "META-INF/MANIFEST.MF".equals(fileNameStr);
             final int fileNameLength = (removeFileNames && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
             final byte[] fileName = (removeFileNames && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
             // File name length
