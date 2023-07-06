@@ -36,6 +36,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--remove-file-names", "-n" }, defaultValue = "false", description = "Remove file names from local file headers")
     boolean removeFileNames = false;
 
+    @Option(names = { "--remove-eocd-info", "-i" }, defaultValue = "false", description = "Remove EOCD info")
+    boolean removeEOCDInfo = false;
+
     @Option(names = { "--remove-comments", "-c" }, defaultValue = "false", description = "Remove file comments and zip comment")
     boolean removeComments = false;
 
@@ -76,7 +79,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

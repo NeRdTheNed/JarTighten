@@ -61,6 +61,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRemoveFileNames();
 
+    /** Remove info from the EOCD */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getRemoveEOCDInfo();
+
     /** Remove file comments and zip comment */
     @Input
     @Optional
@@ -106,6 +111,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean removeFileLength = getRemoveFileLength().getOrElse(false);
         final boolean removeDirEntryLength = getRemoveDirEntryLength().getOrElse(false);
         final boolean removeFileNames = getRemoveFileNames().getOrElse(false);
+        final boolean removeEOCDInfo = getRemoveEOCDInfo().getOrElse(false);
         final boolean removeComments = getRemoveComments().getOrElse(false);
         final boolean removeExtra = getRemoveExtra().getOrElse(false);
         final boolean removeDirectoryEntries = getRemoveDirectoryEntries().getOrElse(true);
@@ -115,7 +121,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
         final boolean didSucceed;
 
         try {

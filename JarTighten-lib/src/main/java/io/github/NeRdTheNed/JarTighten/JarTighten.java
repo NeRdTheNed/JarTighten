@@ -44,6 +44,8 @@ public class JarTighten {
     private final boolean removeDirEntryLength;
     /** Remove file names from local file headers */
     private final boolean removeFileNames;
+    /** Remove info from the EOCD */
+    private final boolean removeEOCDInfo;
     /** Remove file comments and zip comment */
     private final boolean removeComments;
     /** Remove extra field */
@@ -64,12 +66,13 @@ public class JarTighten {
     private final boolean sortEntries;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
         this.removeDirEntryLength = removeDirEntryLength;
         this.removeFileNames = removeFileNames;
+        this.removeEOCDInfo = removeEOCDInfo;
         this.removeComments = removeComments;
         this.removeExtra = removeExtra;
         this.removeDirectoryEntries = removeDirectoryEntries;
@@ -641,13 +644,13 @@ public class JarTighten {
         // Header
         writeIntLE(outputStream, ZipPatterns.END_OF_CENTRAL_DIRECTORY_QUAD);
         // Disk number
-        writeShortLE(outputStream, end.getDiskNumber());
+        writeShortLE(outputStream, removeEOCDInfo ? Integer.MAX_VALUE : end.getDiskNumber());
         // Central directory start disk
-        writeShortLE(outputStream, end.getCentralDirectoryStartDisk());
+        writeShortLE(outputStream, removeEOCDInfo ? Integer.MAX_VALUE : end.getCentralDirectoryStartDisk());
         // TODO What is this?
-        writeShortLE(outputStream, centralEntries);
+        writeShortLE(outputStream, removeEOCDInfo ? 0 : centralEntries);
         // Central directory entries
-        writeShortLE(outputStream, centralEntries);
+        writeShortLE(outputStream, removeEOCDInfo ? 0 : centralEntries);
         // Central directory size
         writeIntLE(outputStream, offset - startCentral);
         // Central directory offset
