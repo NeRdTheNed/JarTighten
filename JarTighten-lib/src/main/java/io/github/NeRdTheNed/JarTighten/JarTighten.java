@@ -7,9 +7,11 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
@@ -21,6 +23,7 @@ import software.coley.lljzip.ZipIO;
 import software.coley.lljzip.format.ZipPatterns;
 import software.coley.lljzip.format.compression.DeflateDecompressor;
 import software.coley.lljzip.format.compression.ZipCompressions;
+import software.coley.lljzip.format.model.AbstractZipFileHeader;
 import software.coley.lljzip.format.model.CentralDirectoryFileHeader;
 import software.coley.lljzip.format.model.EndOfCentralDirectory;
 import software.coley.lljzip.format.model.LocalFileHeader;
@@ -55,9 +58,11 @@ public class JarTighten {
     private final boolean recompressStore;
     /** Store the contents of all embedded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     private final boolean recursiveStore;
+    /** Sort zip entries in the way they're expected to be in a jar file */
+    private final boolean sortEntries;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeFileNames, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
@@ -70,6 +75,7 @@ public class JarTighten {
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
         this.recursiveStore = recursiveStore;
+        this.sortEntries = sortEntries;
     }
 
     private static final class EntryData {
@@ -358,6 +364,59 @@ public class JarTighten {
     }
 
     /**
+     * A comparator for ordering entries in a Jar file.
+     * Java expects either the first entry to be the manifest,
+     * or the first entry to be the directory containing the manifest
+     * and the second entry to be the manifest.
+     */
+    public class JarFileSorter implements Comparator<AbstractZipFileHeader> {
+        /**
+         * Sorts entries first by checking if they're either the META-INF folder,
+         * the manifest file, and then by alphabetical order.
+         *
+         * @param e1 the first entry
+         * @param e2 the second entry
+         * @return the order
+         */
+        @Override
+        public int compare(AbstractZipFileHeader e1, AbstractZipFileHeader e2) {
+            final String e1name = e1.getFileNameAsString();
+            final String e2name = e2.getFileNameAsString();
+            final boolean isE1ManifestFolder = "META-INF/".equals(e1name);
+            final boolean isE2ManifestFolder = "META-INF/".equals(e2name);
+
+            if (isE1ManifestFolder && isE2ManifestFolder) {
+                return 0;
+            }
+
+            if (isE1ManifestFolder) {
+                return -1;
+            }
+
+            if (isE2ManifestFolder) {
+                return 1;
+            }
+
+            final boolean isE1Manifest = "META-INF/MANIFEST.MF".equals(e1name);
+            final boolean isE2Manifest = "META-INF/MANIFEST.MF".equals(e2name);
+
+            if (isE1Manifest && isE2Manifest) {
+                return 0;
+            }
+
+            if (isE1Manifest) {
+                return -1;
+            }
+
+            if (isE2Manifest) {
+                return 1;
+            }
+
+            return e1name.compareTo(e2name);
+        }
+    }
+
+    /**
      * Optimises a ZipArchive, with the configured settings.
      *
      * @param forceRecursiveStore if true, store the contents of this and all embedded zip or jar files uncompressed recursively
@@ -369,9 +428,10 @@ public class JarTighten {
         final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final HashMap<Integer, EntryData> mapToEntryData = new HashMap<>();
         int offset = 0;
+        final JarFileSorter sorter = new JarFileSorter();
 
         // Local file headers:
-        for (final LocalFileHeader fileHeader : archive.getLocalFiles()) {
+        for (final LocalFileHeader fileHeader : sortEntries ? archive.getLocalFiles().stream().sorted(sorter).collect(Collectors.toList()) : archive.getLocalFiles()) {
             int crc32 = fileHeader.getCrc32();
             final int originalCrc32 = crc32;
             int realCompressedSize = (int) fileHeader.getCompressedSize();
@@ -488,7 +548,7 @@ public class JarTighten {
         int centralEntries = 0;
 
         // Central directory file headers:
-        for (final CentralDirectoryFileHeader centralDir : archive.getCentralDirectories()) {
+        for (final CentralDirectoryFileHeader centralDir : sortEntries ? archive.getCentralDirectories().stream().sorted(sorter).collect(Collectors.toList()) : archive.getCentralDirectories()) {
             final int crc32 = centralDir.getCrc32();
             final int key = deduplicateEntries ? crc32 : (int) centralDir.getRelativeOffsetOfLocalHeader();
 

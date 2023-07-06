@@ -57,6 +57,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--recursive-store", "-R" }, defaultValue = "false", description = "Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller")
     boolean recursiveStore = false;
 
+    @Option(names = { "--sort-entries", "-S" }, defaultValue = "false", description = "Sort zip entries in the way they're expected to be in a jar file")
+    boolean sortEntries = false;
+
     @Option(names = { "--overwrite", "-o" }, defaultValue = "false", description = "Overwrite existing output file")
     boolean overwrite = false;
 
@@ -70,7 +73,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

@@ -81,6 +81,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRecursiveStore();
 
+    /** Sort zip entries in the way they're expected to be in a jar file */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getSortEntries();
+
     /** Files to exclude from optimisations which might hide them from standard zip libraries */
     @Input
     @Optional
@@ -103,7 +108,8 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore);
+        final boolean sortEntries = getSortEntries().getOrElse(false);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeFileNames, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
         final boolean didSucceed;
 
         try {
