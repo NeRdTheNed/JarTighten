@@ -64,9 +64,11 @@ public class JarTighten {
     private final boolean recursiveStore;
     /** Sort zip entries in the way they're expected to be in a jar file */
     private final boolean sortEntries;
+    /** Replace every value that the JVM doesn't read in local file headers with zeros. Overrides other options. */
+    private final boolean zeroLocalFileHeaders;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
@@ -82,6 +84,7 @@ public class JarTighten {
         this.recompressStore = recompressStore;
         this.recursiveStore = recursiveStore;
         this.sortEntries = sortEntries;
+        this.zeroLocalFileHeaders = zeroLocalFileHeaders;
     }
 
     private static final class EntryData {
@@ -487,43 +490,43 @@ public class JarTighten {
                 versionNeeded = ZIP_VERSION_2_0;
             }
 
-            writeShortLE(outputStream, versionNeeded);
+            writeShortLE(outputStream, zeroLocalFileHeaders ? 0 : versionNeeded);
             // General purpose bit flag
             int bitFlag = fileHeader.getGeneralPurposeBitFlag();
             // Clear the "Data Descriptor" / EXTSIG flag
             // TODO Option to keep this?
             bitFlag &= ~(1 << 3);
-            writeShortLE(outputStream, bitFlag);
+            writeShortLE(outputStream, zeroLocalFileHeaders ? 0 : bitFlag);
             // Compression method
-            writeShortLE(outputStream, compressionMethod);
+            writeShortLE(outputStream, zeroLocalFileHeaders ? 0 : compressionMethod);
             // Last modification time
             final int lastModFileTime = removeTimestamps ? EARLIEST_TIME : fileHeader.getLastModFileTime();
-            writeShortLE(outputStream, lastModFileTime);
+            writeShortLE(outputStream, zeroLocalFileHeaders ? 0 : lastModFileTime);
             // Last modification date
             final int lastModFileDate = removeTimestamps ? EARLIEST_DATE : fileHeader.getLastModFileDate();
-            writeShortLE(outputStream, lastModFileDate);
+            writeShortLE(outputStream, zeroLocalFileHeaders ? 0 : lastModFileDate);
             // CRC32
-            writeIntLE(outputStream, crc32);
+            writeIntLE(outputStream, zeroLocalFileHeaders ? 0 : crc32);
             // Compressed size
             final int localCompressedSize = (removeFileLength && !exclude) ? 0 : realCompressedSize;
-            writeIntLE(outputStream, localCompressedSize);
+            writeIntLE(outputStream, zeroLocalFileHeaders ? 0 : localCompressedSize);
             // Uncompressed size
             final int localUncompressedSize = (removeFileLength && !exclude) ? 0 : realUncompressedSize;
-            writeIntLE(outputStream, localUncompressedSize);
+            writeIntLE(outputStream, zeroLocalFileHeaders ? 0 : localUncompressedSize);
             // File name optimisation
             final String fileNameStr = fileHeader.getFileNameAsString();
             final boolean isManifest = "META-INF/".equals(fileNameStr) || "META-INF/MANIFEST.MF".equals(fileNameStr);
-            final int fileNameLength = (removeFileNames && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
-            final byte[] fileName = (removeFileNames && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
+            final int fileNameLength = ((zeroLocalFileHeaders || removeFileNames) && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
+            final byte[] fileName = ((zeroLocalFileHeaders || removeFileNames) && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
             // File name length
             writeShortLE(outputStream, fileNameLength);
             // Extra field length
-            final int extraFieldLength = removeExtra ? 0 : fileHeader.getExtraFieldLength();
+            final int extraFieldLength = (zeroLocalFileHeaders || removeExtra) ? 0 : fileHeader.getExtraFieldLength();
             writeShortLE(outputStream, extraFieldLength);
             // File name
             outputStream.write(fileName);
             // Extra field
-            final byte[] extra = removeExtra ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
+            final byte[] extra = (zeroLocalFileHeaders || removeExtra) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
             outputStream.write(extra);
             // Compressed data
             // TODO This feels wrong?

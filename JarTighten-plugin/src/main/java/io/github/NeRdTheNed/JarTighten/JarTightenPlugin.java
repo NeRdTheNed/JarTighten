@@ -25,6 +25,7 @@ public class JarTightenPlugin implements Plugin<Project> {
                 jarTightenTask.getDeduplicateEntries().convention(false);
                 jarTightenTask.getRecursiveStore().convention(false);
                 jarTightenTask.getSortEntries().convention(false);
+                jarTightenTask.getZeroLocalFileHeaders().convention(false);
                 jarTightenTask.getInputFile().convention(jarTask.getArchiveFile());
                 jarTightenTask.getOutputFile().convention(jarTask.getArchiveFile());
             });

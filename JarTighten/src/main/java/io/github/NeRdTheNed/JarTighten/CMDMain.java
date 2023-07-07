@@ -69,6 +69,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--overwrite", "-o" }, defaultValue = "false", description = "Overwrite existing output file")
     boolean overwrite = false;
 
+    @Option(names = { "--zero-local-file-headers", "-Z" }, defaultValue = "false", description = "Replace every value that the JVM doesn't read in local file headers with zeros. Overrides other options.")
+    boolean zeroLocalFileHeaders = false;
+
     @Override
     public Integer call() throws Exception {
         if (!Files.isRegularFile(inputFile)) {
@@ -79,7 +82,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

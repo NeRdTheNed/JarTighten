@@ -96,6 +96,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getSortEntries();
 
+    /** Replace every value that the JVM doesn't read in local file headers with zeros. Overrides other options. */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getZeroLocalFileHeaders();
+
     /** Files to exclude from optimisations which might hide them from standard zip libraries */
     @Input
     @Optional
@@ -121,7 +126,8 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries);
+        final boolean zeroLocalFileHeaders = getZeroLocalFileHeaders().getOrElse(false);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         final boolean didSucceed;
 
         try {
