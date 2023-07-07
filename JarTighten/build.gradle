@@ -29,15 +29,14 @@ if (!build_release) {
     version += "-SNAPSHOT"
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 final def compiler = javaToolchains.compilerFor {
     languageVersion = JavaLanguageVersion.of(8)
 }
 
 // Tells Gradle to use the previously defined Java 8 compatible JDK.
 java {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
     toolchain {
         compiler
     }
