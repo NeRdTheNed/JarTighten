@@ -57,7 +57,7 @@ repositories {
 }
 
 dependencies {
-    api 'software.coley:lljzip:2.1.0'
+    api 'software.coley:lljzip:2.1.1'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
 }
 
