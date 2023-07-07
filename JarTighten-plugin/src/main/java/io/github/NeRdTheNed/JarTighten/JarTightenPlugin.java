@@ -24,6 +24,7 @@ public class JarTightenPlugin implements Plugin<Project> {
                 jarTightenTask.getRemoveDirectoryEntries().convention(true);
                 jarTightenTask.getDeduplicateEntries().convention(false);
                 jarTightenTask.getRecursiveStore().convention(false);
+                jarTightenTask.getSortEntries().convention(false);
                 jarTightenTask.getInputFile().convention(jarTask.getArchiveFile());
                 jarTightenTask.getOutputFile().convention(jarTask.getArchiveFile());
             });
