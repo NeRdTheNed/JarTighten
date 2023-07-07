@@ -516,8 +516,24 @@ public class JarTighten {
             // File name optimisation
             final String fileNameStr = fileHeader.getFileNameAsString();
             final boolean isManifest = "META-INF/".equals(fileNameStr) || "META-INF/MANIFEST.MF".equals(fileNameStr);
-            final int fileNameLength = ((zeroLocalFileHeaders || removeFileNames) && !isManifest && !exclude) ? 0 : fileHeader.getFileNameLength();
-            final byte[] fileName = ((zeroLocalFileHeaders || removeFileNames) && !isManifest && !exclude) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getFileName());
+            final int fileNameLength;
+            final byte[] fileName;
+
+            if (zeroLocalFileHeaders || (removeFileNames && !exclude)) {
+                if (isManifest) {
+                    // For some reason, the manifest requires the correct file name length offset,
+                    // but not the correct name.
+                    fileNameLength = fileHeader.getFileNameLength();
+                    fileName = new byte[fileNameLength];
+                } else {
+                    fileNameLength = 0;
+                    fileName = new byte[] { };
+                }
+            } else {
+                fileNameLength = fileHeader.getFileNameLength();
+                fileName = ByteDataUtil.toByteArray(fileHeader.getFileName());
+            }
+
             // File name length
             writeShortLE(outputStream, fileNameLength);
             // Extra field length
