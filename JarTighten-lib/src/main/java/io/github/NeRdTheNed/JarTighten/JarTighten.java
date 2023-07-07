@@ -602,12 +602,12 @@ public class JarTighten {
             // Sizes
             final String fileNameStr = centralDir.getFileNameAsString();
             final boolean isManifest = "META-INF/".equals(fileNameStr) || "META-INF/MANIFEST.MF".equals(fileNameStr);
-            final boolean exclude = isManifest || excludes.contains(fileNameStr);
+            final boolean exclude = excludes.contains(fileNameStr);
             // Compressed size
             final int dirCompressedSize = removeDirEntryLength && !exclude && (entryData.compressionMethod == ZipCompressions.DEFLATED) ? Integer.MAX_VALUE : entryData.compressedSize;
             writeIntLE(outputStream, dirCompressedSize);
             // Uncompressed size
-            final int dirUncompressedSize = removeDirEntryLength && !exclude ? Integer.MAX_VALUE : uncompressedSize;
+            final int dirUncompressedSize = removeDirEntryLength && !isManifest && !exclude ? Integer.MAX_VALUE : uncompressedSize;
             writeIntLE(outputStream, dirUncompressedSize);
             // File name length
             final int fileNameLength = centralDir.getFileNameLength();
