@@ -373,6 +373,38 @@ public class JarTighten {
     }
 
     /**
+     * Create a deflated CompressionResult from the given input, stored as one type 0 block.
+     * This is never useful for practical purposes,
+     * as it's always larger than an uncompressed (stored) entry by at least 5-ish bytes.
+     * TODO Handle uncompressed data larger than allowed in a single type 0 block
+     *
+     * @param fileHeader the local file header
+     * @param crc32 the input crc32
+     * @param uncompressedSize the input uncompressed size
+     * @param compressionMethod the input compression method
+     * @param compressedData the input compressed data
+     * @return a stored CompressionResult from the given input
+     */
+    private CompressionResult asType0Block(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
+        final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
+        final byte[] type0Block = new byte[uncompressedData.length + 5];
+        // Block type 0 | final
+        type0Block[0] = 0x01;
+        // Calculate block sizes
+        final int size = uncompressedData.length;
+        final int invertedSize = ~size;
+        // Block size
+        type0Block[1] = (byte) (size & 0xFF);
+        type0Block[2] = (byte) ((size >> 8) & 0xFF);
+        // Inverted block size
+        type0Block[3] = (byte) (invertedSize & 0xFF);
+        type0Block[4] = (byte) ((invertedSize >> 8) & 0xFF);
+        // Copy uncompressed data into block
+        System.arraycopy(uncompressedData, 0, type0Block, 5, uncompressedData.length);
+        return new CompressionResult(ZipCompressions.DEFLATED, type0Block, crc32, uncompressedSize, type0Block.length);
+    }
+
+    /**
      * A comparator for ordering entries in a Jar file.
      * Java expects either the first entry to be the manifest,
      * or the first entry to be the directory containing the manifest
