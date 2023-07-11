@@ -1,5 +1,7 @@
 package io.github.NeRdTheNed.JarTighten;
 
+import static lu.luz.jzopfli.Zopfli_lib.ZopfliCompress;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -15,6 +17,8 @@ import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
+import lu.luz.jzopfli.ZopfliH.ZopfliFormat;
+import lu.luz.jzopfli.ZopfliH.ZopfliOptions;
 import ru.eustas.zopfli.Options;
 import ru.eustas.zopfli.Options.BlockSplitting;
 import ru.eustas.zopfli.Options.OutputFormat;
@@ -56,6 +60,8 @@ public class JarTighten {
     private final boolean deduplicateEntries;
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     private final boolean recompressZopfli;
+    /** Recompress files with jzopfli, uses compressed output if smaller */
+    private final boolean recompressJZopflii;
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
     private final boolean recompressStandard;
     /** Check uncompressed size, stores uncompressed if smaller */
@@ -68,7 +74,7 @@ public class JarTighten {
     private final boolean zeroLocalFileHeaders;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
+    public JarTighten(List<String> excludes, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
         this.excludes = excludes;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
@@ -80,6 +86,7 @@ public class JarTighten {
         this.removeDirectoryEntries = removeDirectoryEntries;
         this.deduplicateEntries = deduplicateEntries;
         this.recompressZopfli = recompressZopfli;
+        this.recompressJZopflii = recompressJZopflii;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
         this.recursiveStore = recursiveStore;
@@ -175,6 +182,29 @@ public class JarTighten {
         return bos.toByteArray();
     }
 
+    /**
+     * Compress using jzopfli deflate compression.
+     * TODO Option customisation
+     *
+     * @param uncompressedData uncompressed data
+     * @return compressed data
+     */
+    private byte[] compressJZopfli(byte[] uncompressedData) throws IOException {
+        // TODO Option customisation
+        final ZopfliOptions jzOptions = new ZopfliOptions();
+        jzOptions.verbose = false;
+        jzOptions.verbose_more = false;
+        jzOptions.numiterations = 20;
+        jzOptions.blocksplitting = true;
+        jzOptions.blocksplittinglast = false;
+        jzOptions.blocksplittingmax = 0;
+        final byte[][] compressedData = {{ 0 }};
+        final int[] outputSize = {0};
+        ZopfliCompress(jzOptions, ZopfliFormat.ZOPFLI_FORMAT_DEFLATE, uncompressedData, uncompressedData.length, compressedData, outputSize);
+        // TODO Verify data integrity
+        return compressedData[0];
+    }
+
     /** Cached JVM compressor */
     private final Deflater javaCompressor = new Deflater(Deflater.BEST_COMPRESSION, true);
 
@@ -256,6 +286,24 @@ public class JarTighten {
                 if (zopfliCompressedData.length < compressedSize) {
                     compressedData = zopfliCompressedData;
                     compressedSize = zopfliCompressedData.length;
+                    compressionMethod = ZipCompressions.DEFLATED;
+                }
+            } catch (final Exception e) {
+                // TODO Handle errors more gracefully
+                e.printStackTrace();
+            }
+        }
+
+        if (recompressJZopflii) {
+            try {
+                // TODO Option customisation
+                final byte[] jzopfliCompressedData = compressJZopfli(uncompressedData);
+
+                // TODO Verify data integrity
+
+                if (jzopfliCompressedData.length < compressedSize) {
+                    compressedData = jzopfliCompressedData;
+                    compressedSize = jzopfliCompressedData.length;
                     compressionMethod = ZipCompressions.DEFLATED;
                 }
             } catch (final Exception e) {

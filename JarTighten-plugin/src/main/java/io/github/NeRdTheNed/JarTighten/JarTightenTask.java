@@ -31,6 +31,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRecompressZopfli();
 
+    /** Recompress files with jzopfli, uses compressed output if smaller */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getRecompressJZopfli();
+
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
     @Input
     @Optional
@@ -122,12 +127,13 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean removeDirectoryEntries = getRemoveDirectoryEntries().getOrElse(true);
         final boolean deduplicateEntries = getDeduplicateEntries().getOrElse(false);
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
+        final boolean recompressJZopfli = getRecompressJZopfli().getOrElse(false);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
         final boolean zeroLocalFileHeaders = getZeroLocalFileHeaders().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         final boolean didSucceed;
 
         try {

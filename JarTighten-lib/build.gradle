@@ -59,6 +59,7 @@ repositories {
 dependencies {
     api 'software.coley:lljzip:2.1.2'
     implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
+    implementation 'com.github.luccappellaro:jzopfli:0.0.4'
 }
 
 jar {
