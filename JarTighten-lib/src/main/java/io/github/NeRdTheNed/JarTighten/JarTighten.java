@@ -33,8 +33,8 @@ public class JarTighten {
     public enum Strategy {
         /** Run each compressor once with the default strategy. Fastest. */
         SINGLE,
-        /** Try multiple strategies for JVM compression, run other selected compressors once with the default strategy. Default. */
-        MULTI_JVM,
+        /** Try multiple strategies for faster compressors, run other selected compressors once with the default strategy. Default. */
+        MULTI_CHEAP,
         /** Run each compressor with all strategies. Much slower, produces best results. */
         EXTENSIVE
     }
@@ -71,6 +71,9 @@ public class JarTighten {
     /** Recompress files with jzopfli, uses compressed output if smaller */
     @SuppressWarnings("unused")
     private final boolean recompressJZopflii;
+    /** Recompress files with JZlib, uses compressed output if smaller */
+    @SuppressWarnings("unused")
+    private final boolean recompressJZlib;
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
     @SuppressWarnings("unused")
     private final boolean recompressStandard;
@@ -84,7 +87,7 @@ public class JarTighten {
     private final boolean zeroLocalFileHeaders;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
+    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
         this.excludes = excludes;
         this.mode = mode;
         this.removeTimestamps = removeTimestamps;
@@ -98,13 +101,14 @@ public class JarTighten {
         this.deduplicateEntries = deduplicateEntries;
         this.recompressZopfli = recompressZopfli;
         this.recompressJZopflii = recompressJZopflii;
+        this.recompressJZlib = recompressJZlib;
         this.recompressStandard = recompressStandard;
         this.recompressStore = recompressStore;
         this.recursiveStore = recursiveStore;
         this.sortEntries = sortEntries;
         this.zeroLocalFileHeaders = zeroLocalFileHeaders;
-        recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii;
-        compressionUtil = new CompressionUtil(recompressStandard, recompressJZopflii, recompressZopfli, mode);
+        recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii || recompressJZlib ;
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode);
     }
 
     private final boolean recompressDeflate;

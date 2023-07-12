@@ -46,6 +46,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRecompressJZopfli();
 
+    /** Recompress files with JZlib, uses compressed output if smaller */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getRecompressJZlib();
+
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
     @Input
     @Optional
@@ -127,7 +132,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final Path inputPath = getInputFile().getAsFile().get().toPath();
         final Path outputPath = getOutputFile().getAsFile().get().toPath();
         final List<String> excludes = getExcludes().getOrNull();
-        final Strategy mode = getMode().getOrElse(Strategy.MULTI_JVM);
+        final Strategy mode = getMode().getOrElse(Strategy.MULTI_CHEAP);
         final boolean removeTimestamps = getRemoveTimestamps().getOrElse(false);
         final boolean removeFileLength = getRemoveFileLength().getOrElse(false);
         final boolean removeDirEntryLength = getRemoveDirEntryLength().getOrElse(false);
@@ -139,12 +144,13 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean deduplicateEntries = getDeduplicateEntries().getOrElse(false);
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
         final boolean recompressJZopfli = getRecompressJZopfli().getOrElse(false);
+        final boolean recompressJZlib = getRecompressJZlib().getOrElse(false);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
         final boolean zeroLocalFileHeaders = getZeroLocalFileHeaders().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         final boolean didSucceed;
 
         try {

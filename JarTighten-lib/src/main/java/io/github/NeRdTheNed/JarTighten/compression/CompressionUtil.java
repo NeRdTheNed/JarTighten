@@ -10,6 +10,8 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.zip.Deflater;
 
+import com.jcraft.jzlib.JZlib;
+
 import io.github.NeRdTheNed.JarTighten.JarTighten.Strategy;
 
 /** Utility class for finding the best way to compress given data in the deflate format */
@@ -23,13 +25,13 @@ public class CompressionUtil {
     private final Compressor[] compressors;
 
     /** Construct the list of compressors for the given settings */
-    private static Compressor[] getCompressors(boolean java, boolean jzopfli, boolean cafeundzopfli, int iter, Strategy mode, int defaultSplit) {
+    private static Compressor[] getCompressors(boolean java, boolean jzlib, boolean jzopfli, boolean cafeundzopfli, int iter, Strategy mode, int defaultSplit) {
         final List<Compressor> compressorsList = new ArrayList<>();
 
         if (java) {
             compressorsList.add(new JavaCompressor());
 
-            if (mode.ordinal() >= Strategy.MULTI_JVM.ordinal()) {
+            if (mode.ordinal() >= Strategy.MULTI_CHEAP.ordinal()) {
                 compressorsList.add(new JavaCompressor(Deflater.FILTERED));
                 compressorsList.add(new JavaCompressor(Deflater.HUFFMAN_ONLY));
             }
@@ -43,15 +45,24 @@ public class CompressionUtil {
             compressorsList.add(new MultiCafeUndZopfliCompressor(iter, mode.ordinal() >= Strategy.EXTENSIVE.ordinal()));
         }
 
+        if (jzlib) {
+            compressorsList.add(new JZLibCompressor());
+
+            if (mode.ordinal() >= Strategy.MULTI_CHEAP.ordinal()) {
+                compressorsList.add(new JZLibCompressor(JZlib.Z_FILTERED));
+                compressorsList.add(new JZLibCompressor(JZlib.Z_HUFFMAN_ONLY));
+            }
+        }
+
         return compressorsList.toArray(new Compressor[0]);
     }
 
-    public CompressionUtil(boolean java, boolean jzopfli, boolean cafeundzopfli, int iter, Strategy mode, int defaultSplit) {
-        compressors = getCompressors(java, jzopfli, cafeundzopfli, iter, mode, defaultSplit);
+    public CompressionUtil(boolean java, boolean jzlib, boolean jzopfli, boolean cafeundzopfli, int iter, Strategy mode, int defaultSplit) {
+        compressors = getCompressors(java, jzlib, jzopfli, cafeundzopfli, iter, mode, defaultSplit);
     }
 
-    public CompressionUtil(boolean java, boolean jzopfli, boolean cafeundzopfli, Strategy mode) {
-        this(java, jzopfli, cafeundzopfli, ZOPFLI_ITER, mode, JZOPFLI_DEFAULT_SPLIT);
+    public CompressionUtil(boolean java, boolean jzlib, boolean jzopfli, boolean cafeundzopfli, Strategy mode) {
+        this(java, jzlib, jzopfli, cafeundzopfli, ZOPFLI_ITER, mode, JZOPFLI_DEFAULT_SPLIT);
     }
 
     private Supplier<ExecutorService> execService = () -> {
