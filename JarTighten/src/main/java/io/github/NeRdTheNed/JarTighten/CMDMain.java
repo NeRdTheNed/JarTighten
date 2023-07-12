@@ -25,7 +25,7 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--exclude", "-e" }, paramLabel = "<filename>", description = "Files to exclude from optimisations which might hide them from standard zip libraries")
     List<String> excludes;
 
-    @Option(names = { "--mode", "-m" }, defaultValue = "ONLY_JVM", description = "Determines which compression strategies are run for each compressor. Improves compression at the cost of running each selected compressor multiple times. Valid values: ${COMPLETION-CANDIDATES}")
+    @Option(names = { "--mode", "-m" }, defaultValue = "MULTI_CHEAP", description = "Determines which compression strategies are run for each compressor. Improves compression at the cost of running each selected compressor multiple times. Valid values: ${COMPLETION-CANDIDATES}")
     Strategy mode = Strategy.MULTI_CHEAP;
 
     @Option(names = { "--remove-timestamps", "-t" }, defaultValue = "false", description = "Remove timestamps")
@@ -61,8 +61,8 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--recompress-jzopfli", "-j" }, defaultValue = "false", description = "Recompress files with jzopfli, uses compressed output if smaller")
     boolean recompressJZopfli = false;
 
-    @Option(names = { "--recompress-jzlib", "-J" }, defaultValue = "false", description = "Recompress files with JZlib, uses compressed output if smaller")
-    boolean recompressJZlib = false;
+    @Option(names = { "--recompress-jzlib", "-J" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Recompress files with JZlib, uses compressed output if smaller")
+    boolean recompressJZlib = true;
 
     @Option(names = { "--recompress-standard", "-r" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Recompress files with standard Java deflate implementation, uses compressed output if smaller")
     boolean recompressStandard = true;

@@ -18,7 +18,7 @@ public class JarTightenPlugin implements Plugin<Project> {
                 jarTightenTask.getMode().convention(Strategy.MULTI_CHEAP);
                 jarTightenTask.getRecompressStore().convention(true);
                 jarTightenTask.getRecompressStandard().convention(true);
-                jarTightenTask.getRecompressJZlib().convention(false);
+                jarTightenTask.getRecompressJZlib().convention(true);
                 jarTightenTask.getRecompressZopfli().convention(false);
                 jarTightenTask.getRemoveTimestamps().convention(false);
                 jarTightenTask.getRemoveFileLength().convention(false);

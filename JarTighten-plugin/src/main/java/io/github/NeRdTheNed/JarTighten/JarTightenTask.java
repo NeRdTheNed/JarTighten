@@ -144,7 +144,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean deduplicateEntries = getDeduplicateEntries().getOrElse(false);
         final boolean recompressZopfli = getRecompressZopfli().getOrElse(false);
         final boolean recompressJZopfli = getRecompressJZopfli().getOrElse(false);
-        final boolean recompressJZlib = getRecompressJZlib().getOrElse(false);
+        final boolean recompressJZlib = getRecompressJZlib().getOrElse(true);
         final boolean recompressStandard = getRecompressStandard().getOrElse(true);
         final boolean recompressStore = getRecompressStore().getOrElse(true);
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
