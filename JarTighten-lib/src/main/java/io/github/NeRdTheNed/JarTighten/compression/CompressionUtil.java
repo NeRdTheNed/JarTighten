@@ -57,8 +57,12 @@ public class CompressionUtil {
         return compressorsList.toArray(new Compressor[0]);
     }
 
+    public CompressionUtil(Compressor[] compressors) {
+        this.compressors = compressors;
+    }
+
     public CompressionUtil(boolean java, boolean jzlib, boolean jzopfli, boolean cafeundzopfli, int iter, Strategy mode, int defaultSplit) {
-        compressors = getCompressors(java, jzlib, jzopfli, cafeundzopfli, iter, mode, defaultSplit);
+        this(getCompressors(java, jzlib, jzopfli, cafeundzopfli, iter, mode, defaultSplit));
     }
 
     public CompressionUtil(boolean java, boolean jzlib, boolean jzopfli, boolean cafeundzopfli, Strategy mode) {
