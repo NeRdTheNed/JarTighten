@@ -16,6 +16,8 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
 
+import io.github.NeRdTheNed.JarTighten.JarTighten.Strategy;
+
 /** A task to optimise a given jar file with JarTighten */
 public abstract class JarTightenTask extends DefaultTask {
     /** Input jar file to optimise */
@@ -27,12 +29,12 @@ public abstract class JarTightenTask extends DefaultTask {
     public abstract RegularFileProperty getOutputFile();
 
     /**
-     * Try multiple compression strategies for each compressor.
+     * Determines which compression strategies are run for each compressor.
      * Improves compression at the cost of running each selected compressor multiple times.
      */
     @Input
     @Optional
-    public abstract Property<Boolean> getExtensive();
+    public abstract Property<Strategy> getMode();
 
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     @Input
@@ -125,7 +127,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final Path inputPath = getInputFile().getAsFile().get().toPath();
         final Path outputPath = getOutputFile().getAsFile().get().toPath();
         final List<String> excludes = getExcludes().getOrNull();
-        final boolean extensive = getExtensive().getOrElse(false);
+        final Strategy mode = getMode().getOrElse(Strategy.MULTI_JVM);
         final boolean removeTimestamps = getRemoveTimestamps().getOrElse(false);
         final boolean removeFileLength = getRemoveFileLength().getOrElse(false);
         final boolean removeDirEntryLength = getRemoveDirEntryLength().getOrElse(false);
@@ -142,7 +144,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
         final boolean zeroLocalFileHeaders = getZeroLocalFileHeaders().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), extensive, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         final boolean didSucceed;
 
         try {

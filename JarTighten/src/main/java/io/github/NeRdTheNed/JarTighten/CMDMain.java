@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import io.github.NeRdTheNed.JarTighten.JarTighten.Strategy;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -24,8 +25,8 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--exclude", "-e" }, paramLabel = "<filename>", description = "Files to exclude from optimisations which might hide them from standard zip libraries")
     List<String> excludes;
 
-    @Option(names = { "--extensive", "-x" }, defaultValue = "false", description = "Try multiple compression strategies for each compressor. Improves compression at the cost of running each selected compressor multiple times.")
-    boolean extensive = false;
+    @Option(names = { "--mode", "-m" }, defaultValue = "ONLY_JVM", description = "Determines which compression strategies are run for each compressor. Improves compression at the cost of running each selected compressor multiple times. Valid values: ${COMPLETION-CANDIDATES}")
+    Strategy mode = Strategy.MULTI_JVM;
 
     @Option(names = { "--remove-timestamps", "-t" }, defaultValue = "false", description = "Remove timestamps")
     boolean removeTimestamps = false;
@@ -88,7 +89,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), extensive, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

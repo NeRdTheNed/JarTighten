@@ -39,13 +39,23 @@ import software.coley.lljzip.util.ByteDataUtil;
  * Jar file size optimiser, including optimisations based on quirks of Java's zip parsing implementation.
  */
 public class JarTighten {
+    /** Compressor strategy */
+    public enum Strategy {
+        /** Run each compressor once with the default strategy. Fastest. */
+        SINGLE,
+        /** Try multiple strategies for JVM compression, run other selected compressors once with the default strategy. Default. */
+        MULTI_JVM,
+        /** Run each compressor with all strategies. Much slower, produces best results. */
+        EXTENSIVE
+    }
+
     /** Files to exclude from optimisations which might hide them from standard zip libraries */
     private final List<String> excludes;
     /**
-     * Try multiple compression strategies for each compressor.
+     * Determines which compression strategies are run for each compressor.
      * Improves compression at the cost of running each selected compressor multiple times.
      */
-    private final boolean extensive;
+    private final Strategy mode;
     /** Remove timestamps */
     private final boolean removeTimestamps;
     /** Remove file length from local file headers */
@@ -80,9 +90,9 @@ public class JarTighten {
     private final boolean zeroLocalFileHeaders;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, boolean extensive, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
+    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
         this.excludes = excludes;
-        this.extensive = extensive;
+        this.mode = mode;
         this.removeTimestamps = removeTimestamps;
         this.removeFileLength = removeFileLength;
         this.removeDirEntryLength = removeDirEntryLength;
@@ -255,7 +265,7 @@ public class JarTighten {
             final Deflater[] compressors;
             final Deflater javaCompressorStandard = new Deflater(Deflater.BEST_COMPRESSION, true);
 
-            if (extensive) {
+            if (mode.ordinal() >= Strategy.MULTI_JVM.ordinal()) {
                 final Deflater javaCompressorFiltered = new Deflater(Deflater.BEST_COMPRESSION, true);
                 final Deflater javaCompressorHuffman = new Deflater(Deflater.BEST_COMPRESSION, true);
                 javaCompressorFiltered.setStrategy(Deflater.FILTERED);
@@ -287,7 +297,7 @@ public class JarTighten {
 
     private Supplier<Options[]> makeCafeOptions() {
         return () -> {
-            final Options[] optionsArr = extensive ? new Options[] {
+            final Options[] optionsArr = mode.ordinal() >= Strategy.EXTENSIVE.ordinal() ? new Options[] {
                 new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, CAFE_ZOPFLI_ITER),
                 new Options(OutputFormat.DEFLATE, BlockSplitting.LAST, CAFE_ZOPFLI_ITER),
                 new Options(OutputFormat.DEFLATE, BlockSplitting.NONE, CAFE_ZOPFLI_ITER),
@@ -304,7 +314,7 @@ public class JarTighten {
         return () -> {
             final List<ZopfliOptions> jzopfliOptionsList = new ArrayList<>();
 
-            if (extensive) {
+            if (mode.ordinal() >= Strategy.EXTENSIVE.ordinal()) {
                 for (final int split : new int[] {JZOPFLI_DEFAULT_SPLIT, 0}) {
                     final ZopfliOptions jzOptionsFirst = new ZopfliOptions();
                     jzOptionsFirst.verbose = false;

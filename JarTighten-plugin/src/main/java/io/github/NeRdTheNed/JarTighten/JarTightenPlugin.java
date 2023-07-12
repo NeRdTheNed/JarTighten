@@ -5,6 +5,8 @@ import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.jvm.tasks.Jar;
 
+import io.github.NeRdTheNed.JarTighten.JarTighten.Strategy;
+
 /** Configures a JarTightenTask using the output of the jar task by default */
 public class JarTightenPlugin implements Plugin<Project> {
     @Override
@@ -13,7 +15,7 @@ public class JarTightenPlugin implements Plugin<Project> {
             final Jar jarTask = (Jar) project.getTasks().getByName("jar");
             project.getTasks().register("jartighten", JarTightenTask.class, jarTightenTask -> {
                 jarTightenTask.dependsOn("jar");
-                jarTightenTask.getExtensive().convention(false);
+                jarTightenTask.getMode().convention(Strategy.MULTI_JVM);
                 jarTightenTask.getRecompressStore().convention(true);
                 jarTightenTask.getRecompressStandard().convention(true);
                 jarTightenTask.getRecompressZopfli().convention(false);
