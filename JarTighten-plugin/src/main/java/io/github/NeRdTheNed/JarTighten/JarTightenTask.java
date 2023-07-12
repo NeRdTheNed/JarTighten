@@ -26,6 +26,14 @@ public abstract class JarTightenTask extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getOutputFile();
 
+    /**
+     * Try multiple compression strategies for each compressor.
+     * Improves compression at the cost of running each selected compressor multiple times.
+     */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getExtensive();
+
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     @Input
     @Optional
@@ -117,6 +125,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final Path inputPath = getInputFile().getAsFile().get().toPath();
         final Path outputPath = getOutputFile().getAsFile().get().toPath();
         final List<String> excludes = getExcludes().getOrNull();
+        final boolean extensive = getExtensive().getOrElse(false);
         final boolean removeTimestamps = getRemoveTimestamps().getOrElse(false);
         final boolean removeFileLength = getRemoveFileLength().getOrElse(false);
         final boolean removeDirEntryLength = getRemoveDirEntryLength().getOrElse(false);
@@ -133,7 +142,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recursiveStore = getRecursiveStore().getOrElse(false);
         final boolean sortEntries = getSortEntries().getOrElse(false);
         final boolean zeroLocalFileHeaders = getZeroLocalFileHeaders().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), extensive, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders);
         final boolean didSucceed;
 
         try {
