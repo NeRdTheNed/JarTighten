@@ -409,6 +409,12 @@ public class JarTighten {
             final int originalCrc32 = crc32;
             int realCompressedSize = (int) fileHeader.getCompressedSize();
             int realUncompressedSize = (int) fileHeader.getUncompressedSize();
+            final CentralDirectoryFileHeader cenDir = fileHeader.getLinkedDirectoryFileHeader();
+
+            if (cenDir != null) {
+                realCompressedSize = (int) cenDir.getCompressedSize();
+                realUncompressedSize = (int) cenDir.getUncompressedSize();
+            }
 
             if ((removeDirectoryEntries && (realUncompressedSize == 0)) || (deduplicateEntries && mapToEntryData.containsKey(crc32))) {
                 continue;
@@ -519,16 +525,12 @@ public class JarTighten {
                 if (crc32 != originalCrc32) {
                     mapToEntryData.put(originalCrc32, entryData);
                 }
+            } else if (cenDir != null) {
+                mapToEntryData.put((int) cenDir.getRelativeOffsetOfLocalHeader(), entryData);
+            } else if (fileHeader.hasOffset()) {
+                mapToEntryData.put((int) fileHeader.offset(), entryData);
             } else {
-                final CentralDirectoryFileHeader cenDir = fileHeader.getLinkedDirectoryFileHeader();
-
-                if (cenDir != null) {
-                    mapToEntryData.put((int) cenDir.getRelativeOffsetOfLocalHeader(), entryData);
-                } else if (fileHeader.hasOffset()) {
-                    mapToEntryData.put((int) fileHeader.offset(), entryData);
-                } else {
-                    System.err.println("File " + fileHeader.getFileNameAsString() + " somehow had no offset?");
-                }
+                System.err.println("File " + fileHeader.getFileNameAsString() + " somehow had no offset?");
             }
 
             offset += 30 + fileNameLength + extraFieldLength + realCompressedSize;
