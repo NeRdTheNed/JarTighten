@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -166,17 +167,15 @@ public class JarTighten {
         return zop;
     };
 
-    /** Cached Zopfli options */
-    private final Options options = new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, 20);
-
     /**
      * Compress using Zopfli deflate compression.
      * TODO Option customisation
      *
      * @param uncompressedData uncompressed data
+     * @param options zopfli compression options
      * @return compressed data
      */
-    private byte[] compressZopfli(byte[] uncompressedData) throws IOException {
+    private byte[] compressZopfli(byte[] uncompressedData, Options options) throws IOException {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
         zopfliCompressor.get().compress(options, uncompressedData, bos);
         return bos.toByteArray();
@@ -187,17 +186,11 @@ public class JarTighten {
      * TODO Option customisation
      *
      * @param uncompressedData uncompressed data
+     * @param jzOptions zopfli compression options
      * @return compressed data
      */
-    private byte[] compressJZopfli(byte[] uncompressedData) throws IOException {
+    private byte[] compressJZopfli(byte[] uncompressedData, ZopfliOptions jzOptions) throws IOException {
         // TODO Option customisation
-        final ZopfliOptions jzOptions = new ZopfliOptions();
-        jzOptions.verbose = false;
-        jzOptions.verbose_more = false;
-        jzOptions.numiterations = 20;
-        jzOptions.blocksplitting = true;
-        jzOptions.blocksplittinglast = false;
-        jzOptions.blocksplittingmax = 0;
         final byte[][] compressedData = {{ 0 }};
         final int[] outputSize = {0};
         ZopfliCompress(jzOptions, ZopfliFormat.ZOPFLI_FORMAT_DEFLATE, uncompressedData, uncompressedData.length, compressedData, outputSize);
@@ -260,6 +253,62 @@ public class JarTighten {
         return compressors;
     };
 
+    /** Amount of Zopfli iterations */
+    private static final int ZOPFLI_ITER = 20;
+
+    /** Amount of CafeUndZopfli iterations */
+    private static final int CAFE_ZOPFLI_ITER = ZOPFLI_ITER;
+
+    /** Amount of JZopfli iterations */
+    private static final int JZOPFLI_ITER = ZOPFLI_ITER;
+
+    /** JZopfli default max block splitting */
+    private static final int JZOPFLI_DEFAULT_SPLIT = 15;
+
+    /** Cached CafeUndZopfli options */
+    private final Options[] options = {
+        new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, CAFE_ZOPFLI_ITER),
+        new Options(OutputFormat.DEFLATE, BlockSplitting.LAST, CAFE_ZOPFLI_ITER),
+        new Options(OutputFormat.DEFLATE, BlockSplitting.NONE, CAFE_ZOPFLI_ITER),
+    };
+
+    /** Cached JZopfli options */
+    private Supplier<ZopfliOptions[]> jZopfliOptions = () -> {
+        final List<ZopfliOptions> jzopfliOptionsList = new ArrayList<>();
+
+        for (final int split : new int[] {JZOPFLI_DEFAULT_SPLIT, 0}) {
+            final ZopfliOptions jzOptionsFirst = new ZopfliOptions();
+            jzOptionsFirst.verbose = false;
+            jzOptionsFirst.verbose_more = false;
+            jzOptionsFirst.numiterations = JZOPFLI_ITER;
+            jzOptionsFirst.blocksplitting = true;
+            jzOptionsFirst.blocksplittinglast = false;
+            jzOptionsFirst.blocksplittingmax = split;
+            jzopfliOptionsList.add(jzOptionsFirst);
+            final ZopfliOptions jzOptionsLast = new ZopfliOptions();
+            jzOptionsLast.verbose = false;
+            jzOptionsLast.verbose_more = false;
+            jzOptionsLast.numiterations = JZOPFLI_ITER;
+            jzOptionsLast.blocksplitting = true;
+            jzOptionsLast.blocksplittinglast = true;
+            jzOptionsLast.blocksplittingmax = split;
+            jzopfliOptionsList.add(jzOptionsLast);
+        }
+
+        final ZopfliOptions jzOptionsNoSplit = new ZopfliOptions();
+        jzOptionsNoSplit.verbose = false;
+        jzOptionsNoSplit.verbose_more = false;
+        jzOptionsNoSplit.numiterations = JZOPFLI_ITER;
+        jzOptionsNoSplit.blocksplitting = false;
+        jzOptionsNoSplit.blocksplittinglast = false;
+        jzOptionsNoSplit.blocksplittingmax = 0;
+        jzopfliOptionsList.add(jzOptionsNoSplit);
+
+        final ZopfliOptions[] optionsList = jzopfliOptionsList.toArray(new ZopfliOptions[0]);
+        jZopfliOptions = () -> optionsList;
+        return optionsList;
+    };
+
     /**
      * Find the smallest way to store the given input file.
      *
@@ -291,14 +340,16 @@ public class JarTighten {
         if (recompressZopfli) {
             try {
                 // TODO Option customisation
-                final byte[] zopfliCompressedData = compressZopfli(uncompressedData);
+                for (final Options option : options) {
+                    final byte[] zopfliCompressedData = compressZopfli(uncompressedData, option);
 
-                // TODO Verify data integrity
+                    // TODO Verify data integrity
 
-                if (zopfliCompressedData.length < compressedSize) {
-                    compressedData = zopfliCompressedData;
-                    compressedSize = zopfliCompressedData.length;
-                    compressionMethod = ZipCompressions.DEFLATED;
+                    if (zopfliCompressedData.length < compressedSize) {
+                        compressedData = zopfliCompressedData;
+                        compressedSize = zopfliCompressedData.length;
+                        compressionMethod = ZipCompressions.DEFLATED;
+                    }
                 }
             } catch (final Exception e) {
                 // TODO Handle errors more gracefully
@@ -309,14 +360,16 @@ public class JarTighten {
         if (recompressJZopflii) {
             try {
                 // TODO Option customisation
-                final byte[] jzopfliCompressedData = compressJZopfli(uncompressedData);
+                for (final ZopfliOptions option : jZopfliOptions.get()) {
+                    final byte[] jzopfliCompressedData = compressJZopfli(uncompressedData, option);
 
-                // TODO Verify data integrity
+                    // TODO Verify data integrity
 
-                if (jzopfliCompressedData.length < compressedSize) {
-                    compressedData = jzopfliCompressedData;
-                    compressedSize = jzopfliCompressedData.length;
-                    compressionMethod = ZipCompressions.DEFLATED;
+                    if (jzopfliCompressedData.length < compressedSize) {
+                        compressedData = jzopfliCompressedData;
+                        compressedSize = jzopfliCompressedData.length;
+                        compressionMethod = ZipCompressions.DEFLATED;
+                    }
                 }
             } catch (final Exception e) {
                 // TODO Handle errors more gracefully
