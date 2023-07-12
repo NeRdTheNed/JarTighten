@@ -537,6 +537,7 @@ public class JarTighten {
      * @param compressedData the input compressed data
      * @return a stored CompressionResult from the given input
      */
+    @SuppressWarnings("unused")
     private CompressionResult asType0Block(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
         final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
         final byte[] type0Block = new byte[uncompressedData.length + 5];
