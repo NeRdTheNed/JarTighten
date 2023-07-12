@@ -1,7 +1,5 @@
 package io.github.NeRdTheNed.JarTighten;
 
-import static lu.luz.jzopfli.Zopfli_lib.ZopfliCompress;
-
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,21 +7,13 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
-import java.util.zip.Deflater;
 
-import lu.luz.jzopfli.ZopfliH.ZopfliFormat;
-import lu.luz.jzopfli.ZopfliH.ZopfliOptions;
-import ru.eustas.zopfli.Options;
-import ru.eustas.zopfli.Options.BlockSplitting;
-import ru.eustas.zopfli.Options.OutputFormat;
-import ru.eustas.zopfli.Zopfli;
+import io.github.NeRdTheNed.JarTighten.compression.CompressionUtil;
 import software.coley.lljzip.ZipIO;
 import software.coley.lljzip.format.ZipPatterns;
 import software.coley.lljzip.format.compression.DeflateDecompressor;
@@ -55,6 +45,7 @@ public class JarTighten {
      * Determines which compression strategies are run for each compressor.
      * Improves compression at the cost of running each selected compressor multiple times.
      */
+    @SuppressWarnings("unused")
     private final Strategy mode;
     /** Remove timestamps */
     private final boolean removeTimestamps;
@@ -75,10 +66,13 @@ public class JarTighten {
     /** Deduplicate local file header entries with the same compressed contents */
     private final boolean deduplicateEntries;
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
+    @SuppressWarnings("unused")
     private final boolean recompressZopfli;
     /** Recompress files with jzopfli, uses compressed output if smaller */
+    @SuppressWarnings("unused")
     private final boolean recompressJZopflii;
     /** Recompress files with standard Java deflate implementation, uses compressed output if smaller */
+    @SuppressWarnings("unused")
     private final boolean recompressStandard;
     /** Check uncompressed size, stores uncompressed if smaller */
     private final boolean recompressStore;
@@ -109,7 +103,12 @@ public class JarTighten {
         this.recursiveStore = recursiveStore;
         this.sortEntries = sortEntries;
         this.zeroLocalFileHeaders = zeroLocalFileHeaders;
+        recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii;
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZopflii, recompressZopfli, mode);
     }
+
+    private final boolean recompressDeflate;
+    private final CompressionUtil compressionUtil;
 
     private static final class EntryData {
         final int crc32;
@@ -176,67 +175,6 @@ public class JarTighten {
         out.write((value >> 24) & 0xFF);
     }
 
-    /** Cached lazily constructed Zopfli compressor. Lazily constructed due to RAM use. */
-    private Supplier<Zopfli> zopfliCompressor = () -> {
-        final Zopfli zop = new Zopfli(8 << 20);
-        zopfliCompressor = () -> zop;
-        return zop;
-    };
-
-    /**
-     * Compress using Zopfli deflate compression.
-     * TODO Option customisation
-     *
-     * @param uncompressedData uncompressed data
-     * @param options zopfli compression options
-     * @return compressed data
-     */
-    private byte[] compressZopfli(byte[] uncompressedData, Options options) throws IOException {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        zopfliCompressor.get().compress(options, uncompressedData, bos);
-        return bos.toByteArray();
-    }
-
-    /**
-     * Compress using jzopfli deflate compression.
-     * TODO Option customisation
-     *
-     * @param uncompressedData uncompressed data
-     * @param jzOptions zopfli compression options
-     * @return compressed data
-     */
-    private byte[] compressJZopfli(byte[] uncompressedData, ZopfliOptions jzOptions) {
-        // TODO Option customisation
-        final byte[][] compressedData = {{ 0 }};
-        final int[] outputSize = {0};
-        ZopfliCompress(jzOptions, ZopfliFormat.ZOPFLI_FORMAT_DEFLATE, uncompressedData, uncompressedData.length, compressedData, outputSize);
-        // TODO Verify data integrity
-        return compressedData[0];
-    }
-
-    /**
-     * Compress using the best standard JVM deflate compression.
-     * TODO Option customisation
-     *
-     * @param uncompressedData uncompressed data
-     * @param javaCompressor the compressor to use
-     * @return compressed data
-     */
-    private byte[] compressStandard(byte[] uncompressedData, Deflater javaCompressor) {
-        javaCompressor.setInput(uncompressedData);
-        javaCompressor.finish();
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final byte[] buffer = new byte[4096];
-
-        while (!javaCompressor.finished()) {
-            final int deflated = javaCompressor.deflate(buffer);
-            bos.write(buffer, 0, deflated);
-        }
-
-        javaCompressor.reset();
-        return bos.toByteArray();
-    }
-
     /** Cached CRC32 calculator */
     private final CRC32 crc32Calc = new CRC32();
 
@@ -257,107 +195,6 @@ public class JarTighten {
         return new CompressionResult(ZipCompressions.STORED, storedJar, crc32, uncompressedSize, uncompressedSize);
     }
 
-    /** Cached JVM compressors */
-    private Supplier<Deflater[]> javaCompressors = makeCompressors();
-
-    private Supplier<Deflater[]> makeCompressors() {
-        return () -> {
-            final Deflater[] compressors;
-            final Deflater javaCompressorStandard = new Deflater(Deflater.BEST_COMPRESSION, true);
-
-            if (mode.ordinal() >= Strategy.MULTI_JVM.ordinal()) {
-                final Deflater javaCompressorFiltered = new Deflater(Deflater.BEST_COMPRESSION, true);
-                final Deflater javaCompressorHuffman = new Deflater(Deflater.BEST_COMPRESSION, true);
-                javaCompressorFiltered.setStrategy(Deflater.FILTERED);
-                javaCompressorHuffman.setStrategy(Deflater.HUFFMAN_ONLY);
-                compressors = new Deflater[] { javaCompressorStandard, javaCompressorFiltered, javaCompressorHuffman };
-            } else {
-                compressors = new Deflater[] { javaCompressorStandard };
-            }
-
-            javaCompressors = () -> compressors;
-            return compressors;
-        };
-    }
-
-    /** Amount of Zopfli iterations */
-    private static final int ZOPFLI_ITER = 20;
-
-    /** Amount of CafeUndZopfli iterations */
-    private static final int CAFE_ZOPFLI_ITER = ZOPFLI_ITER;
-
-    /** Amount of JZopfli iterations */
-    private static final int JZOPFLI_ITER = ZOPFLI_ITER;
-
-    /** JZopfli default max block splitting */
-    private static final int JZOPFLI_DEFAULT_SPLIT = 15;
-
-    /** Cached CafeUndZopfli options */
-    private Supplier<Options[]> options = makeCafeOptions();
-
-    private Supplier<Options[]> makeCafeOptions() {
-        return () -> {
-            final Options[] optionsArr = mode.ordinal() >= Strategy.EXTENSIVE.ordinal() ? new Options[] {
-                new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, CAFE_ZOPFLI_ITER),
-                new Options(OutputFormat.DEFLATE, BlockSplitting.LAST, CAFE_ZOPFLI_ITER),
-                new Options(OutputFormat.DEFLATE, BlockSplitting.NONE, CAFE_ZOPFLI_ITER),
-            } : new Options[] { new Options(OutputFormat.DEFLATE, BlockSplitting.FIRST, CAFE_ZOPFLI_ITER) };
-            options = () -> optionsArr;
-            return optionsArr;
-        };
-    }
-
-    /** Cached JZopfli options */
-    private Supplier<ZopfliOptions[]> jZopfliOptions = makeJZopfliOptions();
-
-    private Supplier<ZopfliOptions[]> makeJZopfliOptions() {
-        return () -> {
-            final List<ZopfliOptions> jzopfliOptionsList = new ArrayList<>();
-
-            if (mode.ordinal() >= Strategy.EXTENSIVE.ordinal()) {
-                for (final int split : new int[] {JZOPFLI_DEFAULT_SPLIT, 0}) {
-                    final ZopfliOptions jzOptionsFirst = new ZopfliOptions();
-                    jzOptionsFirst.verbose = false;
-                    jzOptionsFirst.verbose_more = false;
-                    jzOptionsFirst.numiterations = JZOPFLI_ITER;
-                    jzOptionsFirst.blocksplitting = true;
-                    jzOptionsFirst.blocksplittinglast = false;
-                    jzOptionsFirst.blocksplittingmax = split;
-                    jzopfliOptionsList.add(jzOptionsFirst);
-                    final ZopfliOptions jzOptionsLast = new ZopfliOptions();
-                    jzOptionsLast.verbose = false;
-                    jzOptionsLast.verbose_more = false;
-                    jzOptionsLast.numiterations = JZOPFLI_ITER;
-                    jzOptionsLast.blocksplitting = true;
-                    jzOptionsLast.blocksplittinglast = true;
-                    jzOptionsLast.blocksplittingmax = split;
-                    jzopfliOptionsList.add(jzOptionsLast);
-                }
-                final ZopfliOptions jzOptionsNoSplit = new ZopfliOptions();
-                jzOptionsNoSplit.verbose = false;
-                jzOptionsNoSplit.verbose_more = false;
-                jzOptionsNoSplit.numiterations = JZOPFLI_ITER;
-                jzOptionsNoSplit.blocksplitting = false;
-                jzOptionsNoSplit.blocksplittinglast = false;
-                jzOptionsNoSplit.blocksplittingmax = 0;
-                jzopfliOptionsList.add(jzOptionsNoSplit);
-            } else {
-                final ZopfliOptions jzOptionsFirst = new ZopfliOptions();
-                jzOptionsFirst.verbose = false;
-                jzOptionsFirst.verbose_more = false;
-                jzOptionsFirst.numiterations = JZOPFLI_ITER;
-                jzOptionsFirst.blocksplitting = true;
-                jzOptionsFirst.blocksplittinglast = false;
-                jzOptionsFirst.blocksplittingmax = JZOPFLI_DEFAULT_SPLIT;
-                jzopfliOptionsList.add(jzOptionsFirst);
-            }
-
-            final ZopfliOptions[] optionsList = jzopfliOptionsList.toArray(new ZopfliOptions[0]);
-            jZopfliOptions = () -> optionsList;
-            return optionsList;
-        };
-    }
-
     /**
      * Find the smallest way to store the given input file.
      *
@@ -371,10 +208,9 @@ public class JarTighten {
      * @return the best compressed result with the configured settings
      */
     private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
-        if (recompressStandard) {
-            // TODO Option customisation
-            for (final Deflater javaCompressor : javaCompressors.get()) {
-                final byte[] recompressedData = compressStandard(uncompressedData, javaCompressor);
+        if (recompressDeflate) {
+            try {
+                final byte[] recompressedData = compressionUtil.compress(uncompressedData, false);
 
                 // TODO Verify data integrity
 
@@ -382,43 +218,6 @@ public class JarTighten {
                     compressedData = recompressedData;
                     compressedSize = recompressedData.length;
                     compressionMethod = ZipCompressions.DEFLATED;
-                }
-            }
-        }
-
-        if (recompressZopfli) {
-            try {
-                // TODO Option customisation
-                for (final Options option : options.get()) {
-                    final byte[] zopfliCompressedData = compressZopfli(uncompressedData, option);
-
-                    // TODO Verify data integrity
-
-                    if (zopfliCompressedData.length < compressedSize) {
-                        compressedData = zopfliCompressedData;
-                        compressedSize = zopfliCompressedData.length;
-                        compressionMethod = ZipCompressions.DEFLATED;
-                    }
-                }
-            } catch (final Exception e) {
-                // TODO Handle errors more gracefully
-                e.printStackTrace();
-            }
-        }
-
-        if (recompressJZopflii) {
-            try {
-                // TODO Option customisation
-                for (final ZopfliOptions option : jZopfliOptions.get()) {
-                    final byte[] jzopfliCompressedData = compressJZopfli(uncompressedData, option);
-
-                    // TODO Verify data integrity
-
-                    if (jzopfliCompressedData.length < compressedSize) {
-                        compressedData = jzopfliCompressedData;
-                        compressedSize = jzopfliCompressedData.length;
-                        compressionMethod = ZipCompressions.DEFLATED;
-                    }
                 }
             } catch (final Exception e) {
                 // TODO Handle errors more gracefully
@@ -535,39 +334,6 @@ public class JarTighten {
     }
 
     /**
-     * Create a deflated CompressionResult from the given input, stored as one type 0 block.
-     * This is never useful for practical purposes,
-     * as it's always larger than an uncompressed (stored) entry by at least 5-ish bytes.
-     * TODO Handle uncompressed data larger than allowed in a single type 0 block
-     *
-     * @param fileHeader the local file header
-     * @param crc32 the input crc32
-     * @param uncompressedSize the input uncompressed size
-     * @param compressionMethod the input compression method
-     * @param compressedData the input compressed data
-     * @return a stored CompressionResult from the given input
-     */
-    @SuppressWarnings("unused")
-    private CompressionResult asType0Block(LocalFileHeader fileHeader, int crc32, int uncompressedSize, int compressionMethod, byte[] compressedData) throws IOException {
-        final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
-        final byte[] type0Block = new byte[uncompressedData.length + 5];
-        // Block type 0 | final
-        type0Block[0] = 0x01;
-        // Calculate block sizes
-        final int size = uncompressedData.length;
-        final int invertedSize = ~size;
-        // Block size
-        type0Block[1] = (byte) (size & 0xFF);
-        type0Block[2] = (byte) ((size >> 8) & 0xFF);
-        // Inverted block size
-        type0Block[3] = (byte) (invertedSize & 0xFF);
-        type0Block[4] = (byte) ((invertedSize >> 8) & 0xFF);
-        // Copy uncompressed data into block
-        System.arraycopy(uncompressedData, 0, type0Block, 5, uncompressedData.length);
-        return new CompressionResult(ZipCompressions.DEFLATED, type0Block, crc32, uncompressedSize, type0Block.length);
-    }
-
-    /**
      * A comparator for ordering entries in a Jar file.
      * Java expects either the first entry to be the manifest,
      * or the first entry to be the directory containing the manifest
@@ -629,7 +395,6 @@ public class JarTighten {
      * @return true, if successful
      */
     private boolean optimiseJar(boolean forceRecursiveStore, ZipArchive archive, OutputStream outputStream) throws IOException {
-        final boolean recompress = recompressZopfli || recompressStandard || recompressStore;
         final HashMap<Integer, EntryData> mapToEntryData = new HashMap<>();
         int offset = 0;
         final JarFileSorter sorter = new JarFileSorter();
@@ -660,7 +425,7 @@ public class JarTighten {
                     // TODO Handle errors more gracefully
                     e.printStackTrace();
                 }
-            } else if (recompress) {
+            } else if (recompressDeflate) {
                 try {
                     final CompressionResult newBest = findSmallestOutput(fileHeader, crc32, realUncompressedSize, realCompressedSize, compressionMethod, fileData);
                     compressionMethod = newBest.compressionMethod;
