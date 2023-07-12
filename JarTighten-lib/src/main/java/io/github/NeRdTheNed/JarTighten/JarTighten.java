@@ -205,17 +205,15 @@ public class JarTighten {
         return compressedData[0];
     }
 
-    /** Cached JVM compressor */
-    private final Deflater javaCompressor = new Deflater(Deflater.BEST_COMPRESSION, true);
-
     /**
      * Compress using the best standard JVM deflate compression.
      * TODO Option customisation
      *
      * @param uncompressedData uncompressed data
+     * @param javaCompressor the compressor to use
      * @return compressed data
      */
-    private byte[] compressStandard(byte[] uncompressedData) {
+    private byte[] compressStandard(byte[] uncompressedData, Deflater javaCompressor) {
         javaCompressor.setInput(uncompressedData);
         javaCompressor.finish();
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -250,6 +248,18 @@ public class JarTighten {
         return new CompressionResult(ZipCompressions.STORED, storedJar, crc32, uncompressedSize, uncompressedSize);
     }
 
+    /** Cached JVM compressors */
+    private Supplier<Deflater[]> javaCompressors = () -> {
+        final Deflater javaCompressorStandard = new Deflater(Deflater.BEST_COMPRESSION, true);
+        final Deflater javaCompressorFiltered = new Deflater(Deflater.BEST_COMPRESSION, true);
+        final Deflater javaCompressorHuffman = new Deflater(Deflater.BEST_COMPRESSION, true);
+        javaCompressorFiltered.setStrategy(Deflater.FILTERED);
+        javaCompressorHuffman.setStrategy(Deflater.HUFFMAN_ONLY);
+        final Deflater[] compressors = { javaCompressorStandard, javaCompressorFiltered, javaCompressorHuffman };
+        javaCompressors = () -> compressors;
+        return compressors;
+    };
+
     /**
      * Find the smallest way to store the given input file.
      *
@@ -265,14 +275,16 @@ public class JarTighten {
     private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
         if (recompressStandard) {
             // TODO Option customisation
-            final byte[] recompressedData = compressStandard(uncompressedData);
+            for (final Deflater javaCompressor : javaCompressors.get()) {
+                final byte[] recompressedData = compressStandard(uncompressedData, javaCompressor);
 
-            // TODO Verify data integrity
+                // TODO Verify data integrity
 
-            if (recompressedData.length < compressedSize) {
-                compressedData = recompressedData;
-                compressedSize = recompressedData.length;
-                compressionMethod = ZipCompressions.DEFLATED;
+                if (recompressedData.length < compressedSize) {
+                    compressedData = recompressedData;
+                    compressedSize = recompressedData.length;
+                    compressionMethod = ZipCompressions.DEFLATED;
+                }
             }
         }
 
