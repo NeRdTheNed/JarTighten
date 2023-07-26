@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
-import io.github.NeRdTheNed.JarTighten.compression.CompressionUtil;
+import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil;
+import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil.Strategy;
+
 import software.coley.lljzip.ZipIO;
 import software.coley.lljzip.format.ZipPatterns;
 import software.coley.lljzip.format.compression.DeflateDecompressor;
@@ -29,16 +31,6 @@ import software.coley.lljzip.util.ByteDataUtil;
  * Jar file size optimiser, including optimisations based on quirks of Java's zip parsing implementation.
  */
 public class JarTighten {
-    /** Compressor strategy */
-    public enum Strategy {
-        /** Run each compressor once with the default strategy. Fastest. */
-        SINGLE,
-        /** Try multiple strategies for faster compressors, run other selected compressors once with the default strategy. Default. */
-        MULTI_CHEAP,
-        /** Run each compressor with all strategies. Much slower, produces best results. */
-        EXTENSIVE
-    }
-
     /** Files to exclude from optimisations which might hide them from standard zip libraries */
     private final List<String> excludes;
     /**
@@ -108,7 +100,7 @@ public class JarTighten {
         this.sortEntries = sortEntries;
         this.zeroLocalFileHeaders = zeroLocalFileHeaders;
         recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii || recompressJZlib ;
-        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode);
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode, false);
     }
 
     private final boolean recompressDeflate;

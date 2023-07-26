@@ -16,7 +16,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
 
-import io.github.NeRdTheNed.JarTighten.JarTighten.Strategy;
+import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil.Strategy;
 
 /** A task to optimise a given jar file with JarTighten */
 public abstract class JarTightenTask extends DefaultTask {

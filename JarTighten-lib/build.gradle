@@ -58,9 +58,7 @@ repositories {
 
 dependencies {
     api 'software.coley:lljzip:2.1.2'
-    implementation 'com.github.eustas:CafeUndZopfli:5cdf283e67'
-    implementation 'com.github.luccappellaro:jzopfli:0.0.4'
-    implementation 'org.jruby:jzlib:1.1.5'
+    api 'com.github.NeRdTheNed:deft4j:8c3d50d5d5'
 }
 
 jar {

@@ -7,7 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import io.github.NeRdTheNed.JarTighten.JarTighten.Strategy;
+import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil.Strategy;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
