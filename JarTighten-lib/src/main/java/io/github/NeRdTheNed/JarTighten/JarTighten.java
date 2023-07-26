@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
+import com.github.NeRdTheNed.deft4j.Deft;
 import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil;
 import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil.Strategy;
 
@@ -77,9 +78,15 @@ public class JarTighten {
     private final boolean sortEntries;
     /** Replace every value that the JVM doesn't read in local file headers with zeros. Overrides other options. */
     private final boolean zeroLocalFileHeaders;
+    /** Optimise existing deflate streams. Majorly increases time spent optimising files. */
+    private final boolean optimiseDeflateStreamExisting;
+    /** Optimise recompressed deflate streams. Majorly increases time spent optimising files. */
+    private final boolean optimiseDeflateStreamRecompress;
+    /** Compare sizes of deflate streams in bits instead of bytes. Majorly increases time spent optimising files. */
+    private final boolean compareDeflateStreamBits;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders) {
+    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits) {
         this.excludes = excludes;
         this.mode = mode;
         this.removeTimestamps = removeTimestamps;
@@ -99,8 +106,11 @@ public class JarTighten {
         this.recursiveStore = recursiveStore;
         this.sortEntries = sortEntries;
         this.zeroLocalFileHeaders = zeroLocalFileHeaders;
+        this.optimiseDeflateStreamExisting = optimiseDeflateStreamExisting;
+        this.optimiseDeflateStreamRecompress = optimiseDeflateStreamRecompress;
+        this.compareDeflateStreamBits = compareDeflateStreamBits;
         recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii || recompressJZlib ;
-        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode, false, false);
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
     }
 
     private final boolean recompressDeflate;
@@ -204,13 +214,30 @@ public class JarTighten {
      * @return the best compressed result with the configured settings
      */
     private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
+        if (optimiseDeflateStreamExisting && (compressionMethod == ZipCompressions.DEFLATED)) {
+            try {
+                final byte[] optimisedData = Deft.optimiseDeflateStream(compressedData);
+
+                // TODO Verify data integrity
+
+                if (compareDeflateStreamBits ? Deft.getSizeBitsFallback(optimisedData) < Deft.getSizeBitsFallback(compressedData) : optimisedData.length < compressedSize) {
+                    compressedData = optimisedData;
+                    compressedSize = optimisedData.length;
+                    compressionMethod = ZipCompressions.DEFLATED;
+                }
+            } catch (final Exception e) {
+                // TODO Handle errors more gracefully
+                e.printStackTrace();
+            }
+        }
+
         if (recompressDeflate) {
             try {
                 final byte[] recompressedData = compressionUtil.compress(uncompressedData, false);
 
                 // TODO Verify data integrity
 
-                if (recompressedData.length < compressedSize) {
+                if (compareDeflateStreamBits && (compressionMethod == ZipCompressions.DEFLATED) ? Deft.getSizeBitsFallback(recompressedData) < Deft.getSizeBitsFallback(compressedData) : recompressedData.length < compressedSize) {
                     compressedData = recompressedData;
                     compressedSize = recompressedData.length;
                     compressionMethod = ZipCompressions.DEFLATED;
@@ -233,7 +260,7 @@ public class JarTighten {
                 final CompressionResult uncomZip = asRecursiveStoredZip(zipInZip);
                 final CompressionResult comUncomZip = findSmallestOutput(uncomZip.compressedData, uncomZip.crc32, uncomZip.uncompressedSize, uncomZip.uncompressedSize, ZipCompressions.STORED, uncomZip.compressedData, false);
 
-                if (comUncomZip.compressedSize < compressedSize) {
+                if (compareDeflateStreamBits && (compressionMethod == ZipCompressions.DEFLATED) && (comUncomZip.compressionMethod == ZipCompressions.DEFLATED) ? Deft.getSizeBitsFallback(comUncomZip.compressedData) < Deft.getSizeBitsFallback(compressedData) : comUncomZip.compressedSize < compressedSize) {
                     compressedData = comUncomZip.compressedData;
                     compressedSize = comUncomZip.compressedSize;
                     compressionMethod = comUncomZip.compressionMethod;
