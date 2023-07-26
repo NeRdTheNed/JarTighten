@@ -87,6 +87,8 @@ public class JarTighten {
 
     /** Creates a JarTighten instance with the given options. */
     public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits) {
+        // Temporarily disabled due to bugs
+        compareDeflateStreamBits = false;
         this.excludes = excludes;
         this.mode = mode;
         this.removeTimestamps = removeTimestamps;
