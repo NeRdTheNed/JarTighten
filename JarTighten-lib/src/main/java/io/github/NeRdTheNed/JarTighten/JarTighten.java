@@ -237,7 +237,7 @@ public class JarTighten {
 
                 // TODO Verify data integrity
 
-                if (compareDeflateStreamBits && (compressionMethod == ZipCompressions.DEFLATED) ? Deft.getSizeBitsFallback(recompressedData) < Deft.getSizeBitsFallback(compressedData) : recompressedData.length < compressedSize) {
+                if ((compareDeflateStreamBits && (compressionMethod == ZipCompressions.DEFLATED)) ? Deft.getSizeBitsFallback(recompressedData) < Deft.getSizeBitsFallback(compressedData) : recompressedData.length < compressedSize) {
                     compressedData = recompressedData;
                     compressedSize = recompressedData.length;
                     compressionMethod = ZipCompressions.DEFLATED;
@@ -260,7 +260,7 @@ public class JarTighten {
                 final CompressionResult uncomZip = asRecursiveStoredZip(zipInZip);
                 final CompressionResult comUncomZip = findSmallestOutput(uncomZip.compressedData, uncomZip.crc32, uncomZip.uncompressedSize, uncomZip.uncompressedSize, ZipCompressions.STORED, uncomZip.compressedData, false);
 
-                if (compareDeflateStreamBits && (compressionMethod == ZipCompressions.DEFLATED) && (comUncomZip.compressionMethod == ZipCompressions.DEFLATED) ? Deft.getSizeBitsFallback(comUncomZip.compressedData) < Deft.getSizeBitsFallback(compressedData) : comUncomZip.compressedSize < compressedSize) {
+                if ((compareDeflateStreamBits && (compressionMethod == ZipCompressions.DEFLATED) && (comUncomZip.compressionMethod == ZipCompressions.DEFLATED)) ? Deft.getSizeBitsFallback(comUncomZip.compressedData) < Deft.getSizeBitsFallback(compressedData) : comUncomZip.compressedSize < compressedSize) {
                     compressedData = comUncomZip.compressedData;
                     compressedSize = comUncomZip.compressedSize;
                     compressionMethod = comUncomZip.compressionMethod;
