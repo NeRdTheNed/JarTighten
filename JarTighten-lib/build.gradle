@@ -58,7 +58,7 @@ repositories {
 
 dependencies {
     api 'software.coley:lljzip:2.1.2'
-    api 'com.github.NeRdTheNed:deft4j:8c3d50d5d5'
+    api 'com.github.NeRdTheNed:deft4j:a590d3f176'
 }
 
 jar {

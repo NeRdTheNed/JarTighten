@@ -100,7 +100,7 @@ public class JarTighten {
         this.sortEntries = sortEntries;
         this.zeroLocalFileHeaders = zeroLocalFileHeaders;
         recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii || recompressJZlib ;
-        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode, false);
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode, false, false);
     }
 
     private final boolean recompressDeflate;
