@@ -62,10 +62,14 @@ repositories {
 shadowJar {
     minimize()
     relocate 'ru.eustas.zopfli', 'io.github.NeRdTheNed.JarTighten.shadow.zopfli'
-    relocate 'software.coley.llzip', 'io.github.NeRdTheNed.JarTighten.shadow.llzip'
+    //relocate 'software.coley.llzip', 'io.github.NeRdTheNed.JarTighten.shadow.llzip'
+    relocate 'com.github.NeRdTheNed.deft4j', 'io.github.NeRdTheNed.JarTighten.shadow.deft4j'
 
     dependencies {
         exclude(dependency('org.slf4j:.*'))
+        exclude(dependency('software.coley:lljzip'))
+        exclude(dependency('com.github.luccappellaro:jzopfli'))
+        exclude(dependency('org.jruby:jzlib'))
     }
 
     archiveClassifier = ''
@@ -97,6 +101,11 @@ afterEvaluate {
 
 dependencies {
     implementation project(':JarTighten-lib')
+
+    shadow 'software.coley:lljzip:2.1.2'
+    shadow 'com.github.luccappellaro:jzopfli:0.0.4'
+    shadow 'org.jruby:jzlib:1.1.5'
+    //shadow 'org.slf4j:slf4j-api:2.0.7'
 }
 
 gradlePlugin {
