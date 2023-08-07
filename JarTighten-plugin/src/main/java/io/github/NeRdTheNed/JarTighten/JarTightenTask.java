@@ -20,6 +20,20 @@ import com.github.NeRdTheNed.deft4j.util.compression.CompressionUtil.Strategy;
 
 /** A task to optimise a given jar file with JarTighten */
 public abstract class JarTightenTask extends DefaultTask {
+    private static Strategy convertEnum(String stratergy) {
+        switch (stratergy != null ? stratergy.toUpperCase() : "MULTI_CHEAP") {
+        case "SINGLE":
+            return Strategy.SINGLE;
+
+        default:
+        case "MULTI_CHEAP":
+            return Strategy.MULTI_CHEAP;
+
+        case "EXTENSIVE":
+            return Strategy.EXTENSIVE;
+        }
+    }
+
     /** Input jar file to optimise */
     @InputFile
     public abstract RegularFileProperty getInputFile();
@@ -34,7 +48,7 @@ public abstract class JarTightenTask extends DefaultTask {
      */
     @Input
     @Optional
-    public abstract Property<Strategy> getMode();
+    public abstract Property<String> getMode();
 
     /** Recompress files with CafeUndZopfli, uses compressed output if smaller */
     @Input
@@ -147,7 +161,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final Path inputPath = getInputFile().getAsFile().get().toPath();
         final Path outputPath = getOutputFile().getAsFile().get().toPath();
         final List<String> excludes = getExcludes().getOrNull();
-        final Strategy mode = getMode().getOrElse(Strategy.MULTI_CHEAP);
+        final Strategy mode = convertEnum(getMode().getOrNull());
         final boolean removeTimestamps = getRemoveTimestamps().getOrElse(false);
         final boolean removeFileLength = getRemoveFileLength().getOrElse(false);
         final boolean removeDirEntryLength = getRemoveDirEntryLength().getOrElse(false);
