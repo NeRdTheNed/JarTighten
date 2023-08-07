@@ -207,8 +207,8 @@ public class JarTighten {
             final boolean deflated2 = method2 == ZipCompressions.DEFLATED;
 
             if (deflated1 || deflated2) {
-                final long size1 = deflated1 ? Deft.getSizeBitsFallback(compressed1) : ((long)compressed1.length * 8);
-                final long size2 = deflated2 ? Deft.getSizeBitsFallback(compressed2) : ((long)compressed2.length * 8);
+                final long size1 = deflated1 ? Deft.getSizeBitsFallback(compressed1) : compressed1.length * 8L;
+                final long size2 = deflated2 ? Deft.getSizeBitsFallback(compressed2) : compressed2.length * 8L;
                 return Long.compare(size1, size2);
             }
         }
@@ -241,7 +241,7 @@ public class JarTighten {
                 if (isCompressedSizeSmaller(optimisedData, compressedData, ZipCompressions.DEFLATED, ZipCompressions.DEFLATED)) {
                     compressedData = optimisedData;
                     compressedSize = optimisedData.length;
-                    compressionMethod = ZipCompressions.DEFLATED;
+                    //compressionMethod = ZipCompressions.DEFLATED;
                 }
             } catch (final Exception e) {
                 // TODO Handle errors more gracefully
@@ -325,7 +325,7 @@ public class JarTighten {
      * @param fileHeader the local file header
      * @return if the file is possibly a zip based file
      */
-    private boolean isFilePossiblyZipLike(LocalFileHeader fileHeader) {
+    private static boolean isFilePossiblyZipLike(LocalFileHeader fileHeader) {
         final String localFileName = fileHeader.getFileNameAsString();
         return (localFileName != null) && (localFileName.endsWith(".jar") || localFileName.endsWith(".zip"));
     }
@@ -379,7 +379,7 @@ public class JarTighten {
      * or the first entry to be the directory containing the manifest
      * and the second entry to be the manifest.
      */
-    public class JarFileSorter implements Comparator<AbstractZipFileHeader> {
+    public static class JarFileSorter implements Comparator<AbstractZipFileHeader> {
         /**
          * Sorts entries first by checking if they're either the META-INF folder,
          * the manifest file, and then by alphabetical order.
@@ -437,7 +437,7 @@ public class JarTighten {
     private boolean optimiseJar(boolean forceRecursiveStore, ZipArchive archive, OutputStream outputStream) throws IOException {
         final HashMap<Integer, EntryData> mapToEntryData = new HashMap<>();
         int offset = 0;
-        final JarFileSorter sorter = new JarFileSorter();
+        final Comparator<AbstractZipFileHeader> sorter = new JarFileSorter();
 
         // Local file headers:
         for (final LocalFileHeader fileHeader : sortEntries ? archive.getLocalFiles().stream().sorted(sorter).collect(Collectors.toList()) : archive.getLocalFiles()) {
@@ -514,10 +514,10 @@ public class JarTighten {
             // CRC32
             writeIntLE(outputStream, zeroLocalFileHeaders ? 0 : crc32);
             // Compressed size
-            final int localCompressedSize = (removeFileLength && !exclude) ? 0 : realCompressedSize;
+            final int localCompressedSize = removeFileLength && !exclude ? 0 : realCompressedSize;
             writeIntLE(outputStream, zeroLocalFileHeaders ? 0 : localCompressedSize);
             // Uncompressed size
-            final int localUncompressedSize = (removeFileLength && !exclude) ? 0 : realUncompressedSize;
+            final int localUncompressedSize = removeFileLength && !exclude ? 0 : realUncompressedSize;
             writeIntLE(outputStream, zeroLocalFileHeaders ? 0 : localUncompressedSize);
             // File name optimisation
             final String fileNameStr = fileHeader.getFileNameAsString();
@@ -543,12 +543,12 @@ public class JarTighten {
             // File name length
             writeShortLE(outputStream, fileNameLength);
             // Extra field length
-            final int extraFieldLength = (zeroLocalFileHeaders || removeExtra) ? 0 : fileHeader.getExtraFieldLength();
+            final int extraFieldLength = zeroLocalFileHeaders || removeExtra ? 0 : fileHeader.getExtraFieldLength();
             writeShortLE(outputStream, extraFieldLength);
             // File name
             outputStream.write(fileName);
             // Extra field
-            final byte[] extra = (zeroLocalFileHeaders || removeExtra) ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
+            final byte[] extra = zeroLocalFileHeaders || removeExtra ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
             outputStream.write(extra);
             // Compressed data
             // TODO This feels wrong?
@@ -587,7 +587,7 @@ public class JarTighten {
             final EntryData entryData = mapToEntryData.get(key);
             final int uncompressedSize = entryData.uncompressedSize;
 
-            if (removeDirectoryEntries && ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0))) {
+            if (removeDirectoryEntries && ((uncompressedSize == 0) || (centralDir.getUncompressedSize() == 0L))) {
                 continue;
             }
 
@@ -665,9 +665,9 @@ public class JarTighten {
         // Header
         writeIntLE(outputStream, ZipPatterns.END_OF_CENTRAL_DIRECTORY_QUAD);
         // Disk number
-        writeShortLE(outputStream, removeEOCDInfo ? Integer.MAX_VALUE : end.getDiskNumber());
+        writeShortLE(outputStream, removeEOCDInfo ? Integer.MAX_VALUE : end != null ? end.getDiskNumber() : 0);
         // Central directory start disk
-        writeShortLE(outputStream, removeEOCDInfo ? Integer.MAX_VALUE : end.getCentralDirectoryStartDisk());
+        writeShortLE(outputStream, removeEOCDInfo ? Integer.MAX_VALUE : end != null ? end.getCentralDirectoryStartDisk() : 0);
         // TODO What is this?
         writeShortLE(outputStream, removeEOCDInfo ? 0 : centralEntries);
         // Central directory entries
@@ -677,9 +677,9 @@ public class JarTighten {
         // Central directory offset
         writeIntLE(outputStream, startCentral);
         // Comment length
-        writeShortLE(outputStream, removeComments ? 0 : end.getZipCommentLength());
+        writeShortLE(outputStream, (end == null) || removeComments ? 0 : end.getZipCommentLength());
         // Comment
-        final byte[] zipComment = removeComments ? new byte[] { } : ByteDataUtil.toByteArray(end.getZipComment());
+        final byte[] zipComment = (end == null) || removeComments ? new byte[] { } : ByteDataUtil.toByteArray(end.getZipComment());
         outputStream.write(zipComment);
         return true;
     }
@@ -726,10 +726,10 @@ public class JarTighten {
             }
         }
 
-        boolean returnVal = false;
+        final boolean returnVal;
 
         try
-            (FileOutputStream outputStream = new FileOutputStream(possibleTempPath.toFile())) {
+            (final FileOutputStream outputStream = new FileOutputStream(possibleTempPath.toFile())) {
             returnVal = optimiseJar(archive, outputStream);
         }
 

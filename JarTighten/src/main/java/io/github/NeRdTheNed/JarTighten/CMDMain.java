@@ -3,7 +3,7 @@ package io.github.NeRdTheNed.JarTighten;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -83,13 +83,13 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--zero-local-file-headers", "-Z" }, defaultValue = "false", description = "Replace every value that the JVM doesn't read in local file headers with zeros. Overrides other options.")
     boolean zeroLocalFileHeaders = false;
 
-    @Option(names = { "--optimise-existing-streams" }, defaultValue = "false", description = "Optimise existing deflate streams. Majorly increases time spent optimising files.")
+    @Option(names = "--optimise-existing-streams", defaultValue = "false", description = "Optimise existing deflate streams. Majorly increases time spent optimising files.")
     boolean optimiseDeflateStreamExisting;
 
-    @Option(names = { "--optimise-recompressed-streams" }, defaultValue = "false", description = "Optimise recompressed deflate streams. Majorly increases time spent optimising files.")
+    @Option(names = "--optimise-recompressed-streams", defaultValue = "false", description = "Optimise recompressed deflate streams. Majorly increases time spent optimising files.")
     boolean optimiseDeflateStreamRecompress;
 
-    @Option(names = { "--compare-size-bits" }, defaultValue = "false", description = "Compare sizes of deflate streams in bits instead of bytes. Majorly increases time spent optimising files.")
+    @Option(names = "--compare-size-bits", defaultValue = "false", description = "Compare sizes of deflate streams in bits instead of bytes. Majorly increases time spent optimising files.")
     boolean compareDeflateStreamBits;
 
     @Override
@@ -102,7 +102,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

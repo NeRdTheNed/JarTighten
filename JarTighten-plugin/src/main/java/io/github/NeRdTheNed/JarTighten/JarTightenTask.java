@@ -2,7 +2,7 @@ package io.github.NeRdTheNed.JarTighten;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.gradle.api.DefaultTask;
@@ -168,7 +168,7 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean optimiseDeflateStreamExisting = getOptimiseDeflateStreamExisting().getOrElse(false);
         final boolean optimiseDeflateStreamRecompress = getOptimiseDeflateStreamRecompress().getOrElse(false);
         final boolean compareDeflateStreamBits = getCompareDeflateStreamBits().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : new ArrayList<String>(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
         final boolean didSucceed;
 
         try {
