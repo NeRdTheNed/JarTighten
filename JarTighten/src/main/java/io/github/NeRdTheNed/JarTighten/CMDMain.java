@@ -71,7 +71,7 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--recompress-store", "-s" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Check uncompressed size, stores uncompressed if smaller")
     boolean recompressStore = true;
 
-    @Option(names = { "--recursive-store", "-R" }, defaultValue = "false", description = "Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller")
+    @Option(names = { "--recursive-store", "-R" }, defaultValue = "false", description = "Store the contents of all embedded zip or jar files uncompressed recursively and compress, uses compressed output if smaller")
     boolean recursiveStore = false;
 
     @Option(names = { "--sort-entries", "-S" }, defaultValue = "false", description = "Sort zip entries in the way they're expected to be in a jar file")

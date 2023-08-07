@@ -106,7 +106,7 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getDeduplicateEntries();
 
-    /** Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
+    /** Store the contents of all embedded zip or jar files uncompressed recursively and compress, uses compressed output if smaller */
     @Input
     @Optional
     public abstract Property<Boolean> getRecursiveStore();

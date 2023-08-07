@@ -26,7 +26,7 @@ Jar file size optimiser
   -n, --remove-file-names             Remove file names from local file headers
   -o, --overwrite                     Overwrite existing output file
   -r, --[no-]recompress-standard      Recompress files with standard Java deflate implementation, uses compressed output if smaller
-  -R, --recursive-store               Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
+  -R, --recursive-store               Store the contents of all embedded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
   -s, --[no-]recompress-store         Check uncompressed size, stores uncompressed if smaller
   -t, --remove-timestamps             Remove timestamps
   -V, --version                       Print version information and exit.
@@ -65,7 +65,7 @@ jartighten {
     //recompressStandard = false
     // Disable checking if storing a file as uncompressed would be smaller (enabled by default)
     //recompressStore = false
-    // Store the contents of all embeded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
+    // Store the contents of all embedded zip or jar files uncompressed recursively and compress, uses compressed output if smaller
     recursiveStore = true
 
     // Exclude a file from optimisations which might hide them from standard zip libraries
