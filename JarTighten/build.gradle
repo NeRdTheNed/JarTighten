@@ -74,9 +74,17 @@ tasks.register('jartightenShadow', JarTightenTask) {
 
     removeTimestamps = true
     removeComments = true
+    removeExtra = true
+    removeDirectoryEntries = true
+    sortEntries = true
 
     if (build_release) {
         recompressZopfli = true
+        //recompressJZopfli = true
+        mode = 'EXTENSIVE'
+        optimiseDeflateStreamExisting = true
+        optimiseDeflateStreamRecompress = true
+        compareDeflateStreamBits = true
     }
 }
 
