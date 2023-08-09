@@ -58,7 +58,7 @@ repositories {
 
 dependencies {
     api 'software.coley:lljzip:2.1.3'
-    api("com.github.NeRdTheNed:deft4j:v1.0.0-beta-2") {
+    api("com.github.NeRdTheNed:deft4j:v1.0.0-beta-3") {
         exclude group: "com.github.NeRdTheNed.deft4j", module: 'deft4j-container'
     }
 }
