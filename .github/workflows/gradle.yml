@@ -5,7 +5,11 @@ on: [ push, pull_request ]
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
@@ -24,7 +28,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: Package
+          name: Package-${{ matrix.os }}
           path: |
             JarTighten/build/libs
             JarTighten-lib/build/libs
