@@ -273,8 +273,13 @@ public class JarTighten {
 
         if (zipLike && recursiveStore) {
             try {
-                final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData);
-                final CompressionResult uncomZip = asRecursiveStoredZip(zipInZip);
+                final CompressionResult uncomZip;
+
+                try
+                    (final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData)) {
+                    uncomZip = asRecursiveStoredZip(zipInZip);
+                }
+
                 final CompressionResult comUncomZip = findSmallestOutput(uncomZip.compressedData, uncomZip.crc32, uncomZip.uncompressedSize, uncomZip.uncompressedSize, ZipCompressions.STORED, uncomZip.compressedData, false);
 
                 if (isCompressedSizeSmaller(comUncomZip.compressedData, compressedData, comUncomZip.compressionMethod, compressionMethod)) {
@@ -361,8 +366,8 @@ public class JarTighten {
         final byte[] uncompressedData = decompressData(fileHeader, compressionMethod, compressedData);
 
         if (recursiveStore && isFilePossiblyZipLike(fileHeader)) {
-            try {
-                final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData);
+            try
+                (final ZipArchive zipInZip = ZipIO.readJvm(uncompressedData)) {
                 return asRecursiveStoredZip(zipInZip);
             } catch (final Exception e) {
                 // TODO Handle errors more gracefully
@@ -708,7 +713,6 @@ public class JarTighten {
             return false;
         }
 
-        final ZipArchive archive = ZipIO.readJvm(input);
         Path possibleTempPath = output;
         boolean handleSame = false;
 
@@ -729,7 +733,8 @@ public class JarTighten {
         final boolean returnVal;
 
         try
-            (final FileOutputStream outputStream = new FileOutputStream(possibleTempPath.toFile())) {
+            (final ZipArchive archive = ZipIO.readJvm(input);
+                    final FileOutputStream outputStream = new FileOutputStream(possibleTempPath.toFile())) {
             returnVal = optimiseJar(archive, outputStream);
         }
 
