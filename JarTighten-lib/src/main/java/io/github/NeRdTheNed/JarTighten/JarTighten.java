@@ -733,8 +733,17 @@ public class JarTighten {
             returnVal = optimiseJar(archive, outputStream);
         }
 
-        if (returnVal && handleSame) {
-            Files.copy(possibleTempPath, output, StandardCopyOption.REPLACE_EXISTING);
+        if (handleSame) {
+            if (returnVal) {
+                Files.copy(possibleTempPath, output, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            try {
+                Files.deleteIfExists(possibleTempPath);
+            } catch (final Exception e) {
+                System.err.println("Issue deleting temporary file " + possibleTempPath);
+                e.printStackTrace();
+            }
         }
 
         return returnVal;
