@@ -80,7 +80,8 @@ tasks.register('jartightenShadow', JarTightenTask) {
 
     if (build_release) {
         recompressZopfli = true
-        //recompressJZopfli = true
+        recompressJZopfli = true
+        recompressZopfliPasses = 99
         mode = 'EXTENSIVE'
         optimiseDeflateStreamExisting = true
         optimiseDeflateStreamRecompress = true
