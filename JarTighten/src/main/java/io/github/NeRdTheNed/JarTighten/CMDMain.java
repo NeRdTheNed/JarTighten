@@ -92,6 +92,12 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = "--compare-size-bits", defaultValue = "false", description = "Compare sizes of deflate streams in bits instead of bytes. Majorly increases time spent optimising files.")
     boolean compareDeflateStreamBits;
 
+    @Option(names = { "--recompress-multithread", "-M" }, negatable = true, defaultValue = "true", fallbackValue = "true", description = "Run each compressor in a separate thread. May improve performance.")
+    boolean recompressMultithread = true;
+
+    @Option(names = { "--zopfli-iter", "--iter", "-I" }, defaultValue = "20", description = "Zopfli iterations. More iterations increases time spent optimising files.")
+    int recompressZopfliPasses = 20;
+
     @Override
     public Integer call() throws Exception {
         if (!Files.isRegularFile(inputFile)) {
@@ -102,7 +108,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 

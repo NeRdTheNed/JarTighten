@@ -60,6 +60,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getRecompressJZopfli();
 
+    /** Zopfli iterations. More iterations increases time spent optimising files. */
+    @Input
+    @Optional
+    public abstract Property<Integer> getRecompressZopfliPasses();
+
     /** Recompress files with JZlib, uses compressed output if smaller */
     @Input
     @Optional
@@ -74,6 +79,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Input
     @Optional
     public abstract Property<Boolean> getRecompressStore();
+
+    /** Run each compressor in a separate thread. May improve performance. */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getRecompressMultithread();
 
     /** Remove timestamps */
     @Input
@@ -182,7 +192,9 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean optimiseDeflateStreamExisting = getOptimiseDeflateStreamExisting().getOrElse(false);
         final boolean optimiseDeflateStreamRecompress = getOptimiseDeflateStreamRecompress().getOrElse(false);
         final boolean compareDeflateStreamBits = getCompareDeflateStreamBits().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        final boolean recompressMultithread = getRecompressMultithread().getOrElse(true);
+        final int recompressZopfliPasses = getRecompressZopfliPasses().getOrElse(20);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses);
         final boolean didSucceed;
 
         try {

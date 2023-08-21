@@ -84,9 +84,14 @@ public class JarTighten {
     private final boolean optimiseDeflateStreamRecompress;
     /** Compare sizes of deflate streams in bits instead of bytes. Majorly increases time spent optimising files. */
     private final boolean compareDeflateStreamBits;
+    /** Run each compressor in a separate thread. May improve performance. */
+    private final boolean recompressMultithread;
+    /** Zopfli iterations. More iterations increases time spent optimising files. */
+    @SuppressWarnings("unused")
+    private final int recompressZopfliPasses;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits) {
+    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits, boolean recompressMultithread, int recompressZopfliPasses) {
         this.excludes = excludes;
         this.mode = mode;
         this.removeTimestamps = removeTimestamps;
@@ -110,7 +115,9 @@ public class JarTighten {
         this.optimiseDeflateStreamRecompress = optimiseDeflateStreamRecompress;
         this.compareDeflateStreamBits = compareDeflateStreamBits;
         recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii || recompressJZlib ;
-        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, mode, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, recompressZopfliPasses, mode, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        this.recompressMultithread = recompressMultithread;
+        this.recompressZopfliPasses = recompressZopfliPasses;
     }
 
     private final boolean recompressDeflate;
@@ -251,7 +258,7 @@ public class JarTighten {
 
         if (recompressDeflate) {
             try {
-                final byte[] recompressedData = compressionUtil.compress(uncompressedData, false);
+                final byte[] recompressedData = compressionUtil.compress(uncompressedData, recompressMultithread);
                 // TODO Verify data integrity
 
                 if (isCompressedSizeSmaller(recompressedData, compressedData, ZipCompressions.DEFLATED, compressionMethod)) {
