@@ -12,10 +12,11 @@ JarTighten is a jar file size optimiser, including optimisations based on quirks
 JarTighten is available as a command line program:
 
 ```
-Usage: JarTighten [-cdDEhijJlLnorRsStVzZ] [--compare-size-bits]
+Usage: JarTighten [-cdDEhijJlLMnorRsStVzZ] [--compare-size-bits]
                   [--optimise-existing-streams]
-                  [--optimise-recompressed-streams] [-m=<mode>]
-                  [-e=<filename>]... <inputFile> <outputFile>
+                  [--optimise-recompressed-streams]
+                  [-I=<recompressZopfliPasses>] [-m=<mode>] [-e=<filename>]...
+                  <inputFile> <outputFile>
 Jar file size optimiser
       <inputFile>            The file to optimise
       <outputFile>           The optimised file
@@ -32,6 +33,9 @@ Jar file size optimiser
   -E, --remove-extra         Remove extra field
   -h, --help                 Show this help message and exit.
   -i, --remove-eocd-info     Remove EOCD info
+  -I, --iter, --zopfli-iter=<recompressZopfliPasses>
+                             Zopfli iterations. More iterations increases time
+                               spent optimising files.
   -j, --recompress-jzopfli   Recompress files with jzopfli, uses compressed
                                output if smaller
   -J, --[no-]recompress-jzlib
@@ -45,6 +49,9 @@ Jar file size optimiser
                                cost of running each selected compressor
                                multiple times. Valid values: SINGLE,
                                MULTI_CHEAP, EXTENSIVE
+  -M, --[no-]recompress-multithread
+                             Run each compressor in a separate thread. May
+                               improve performance.
   -n, --remove-file-names    Remove file names from local file headers
   -o, --overwrite            Overwrite existing output file
       --optimise-existing-streams
@@ -108,12 +115,16 @@ jartighten {
     recompressZopfli = true
     // Enable jzopfli recompression (very time consuming, may require configuring Gradle to use more memory)
     //recompressJZopfli = true
+    // Zopfli iterations. More iterations increases time spent optimising files.
+    //recompressZopfliPasses = 20
     // Disable JZlib recompression (enabled by default)
     //recompressJZlib = false
     // Disable standard JVM deflate recompression (enabled by default)
     //recompressStandard = false
     // Disable checking if storing a file as uncompressed would be smaller (enabled by default)
     //recompressStore = false
+    // Disable running each compressor in a separate thread
+    //recompressMultithread = false
     // Determines which compression strategies are run for each compressor.
     // Improves compression at the cost of running each selected compressor multiple times.
     // Valid values: SINGLE, MULTI_CHEAP, EXTENSIVE
