@@ -114,7 +114,7 @@ dependencies {
     shadow 'software.coley:lljzip:2.3.0'
     shadow 'com.github.luccappellaro:jzopfli:0.0.4'
     shadow 'org.jruby:jzlib:1.1.5'
-    //shadow 'org.slf4j:slf4j-api:2.0.7'
+    //shadow 'org.slf4j:slf4j-api:2.0.9'
 }
 
 gradlePlugin {

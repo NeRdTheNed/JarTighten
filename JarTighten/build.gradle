@@ -103,11 +103,11 @@ jartighten {
 build.finalizedBy(jartighten)
 
 dependencies {
-    implementation 'info.picocli:picocli:4.7.4'
-    annotationProcessor 'info.picocli:picocli-codegen:4.7.4'
+    implementation 'info.picocli:picocli:4.7.5'
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.5'
 
-    implementation 'org.slf4j:slf4j-api:2.0.7'
-    implementation 'org.slf4j:slf4j-jdk14:2.0.7'
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'org.slf4j:slf4j-jdk14:2.0.9'
 
     implementation project(':JarTighten-lib')
 }
