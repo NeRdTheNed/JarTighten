@@ -165,6 +165,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getCompareDeflateStreamBits();
 
+    /** Mark the output jar file as executable on certain operating systems if not already set. Increases file size by 4 bytes. */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getMakeExecutableJar();
+
     /** Optimise a jar file with JarTighten */
     @TaskAction
     public void jarTighten() {
@@ -194,7 +199,8 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean compareDeflateStreamBits = getCompareDeflateStreamBits().getOrElse(false);
         final boolean recompressMultithread = getRecompressMultithread().getOrElse(true);
         final int recompressZopfliPasses = getRecompressZopfliPasses().getOrElse(20);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses);
+        final boolean makeExecutableJar = getMakeExecutableJar().getOrElse(false);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses, makeExecutableJar);
         final boolean didSucceed;
 
         try {

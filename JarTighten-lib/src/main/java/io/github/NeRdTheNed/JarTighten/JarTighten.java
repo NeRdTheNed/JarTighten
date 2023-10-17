@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -89,9 +90,11 @@ public class JarTighten {
     /** Zopfli iterations. More iterations increases time spent optimising files. */
     @SuppressWarnings("unused")
     private final int recompressZopfliPasses;
+    /** Mark the output jar file as executable on certain operating systems if not already set. Increases file size by 4 bytes. */
+    private final boolean makeExecutableJar;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits, boolean recompressMultithread, int recompressZopfliPasses) {
+    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits, boolean recompressMultithread, int recompressZopfliPasses, boolean makeExecutableJar) {
         this.excludes = excludes;
         this.mode = mode;
         this.removeTimestamps = removeTimestamps;
@@ -118,6 +121,7 @@ public class JarTighten {
         compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, recompressZopfliPasses, mode, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
         this.recompressMultithread = recompressMultithread;
         this.recompressZopfliPasses = recompressZopfliPasses;
+        this.makeExecutableJar = makeExecutableJar;
     }
 
     private final boolean recompressDeflate;
@@ -186,6 +190,24 @@ public class JarTighten {
         out.write((value >> 8) & 0xFF);
         out.write((value >> 16) & 0xFF);
         out.write((value >> 24) & 0xFF);
+    }
+
+    /** Check if any Zip extra fields match a given signature. */
+    private static boolean checkForExtraSignature(byte[] extra, short signature) {
+        int pos = 0;
+
+        while (pos < extra.length) {
+            final short readSignature = (short) ((extra[pos] & 0xff) + ((extra[pos + 1] & 0xff) << 8));
+
+            if (readSignature == signature) {
+                return true;
+            }
+
+            final int length = ((extra[pos + 2] & 0xff) + ((extra[pos + 3] & 0xff) << 8));
+            pos += 4 + length;
+        }
+
+        return false;
     }
 
     /** Cached CRC32 calculator */
@@ -554,13 +576,25 @@ public class JarTighten {
 
             // File name length
             writeShortLE(outputStream, fileNameLength);
+            // Get extra
+            int extraFieldLength = zeroLocalFileHeaders || removeExtra ? 0 : fileHeader.getExtraFieldLength();
+            byte[] extra = zeroLocalFileHeaders || removeExtra ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
+
+            if (makeExecutableJar && (offset == 0) && !checkForExtraSignature(extra, (short) 0xCAFE)) {
+                extraFieldLength += 4;
+                final int currentSize = extra.length;
+                extra = Arrays.copyOf(extra, currentSize + 4);
+                extra[currentSize + 0] = (byte) 0xFE;
+                extra[currentSize + 1] = (byte) 0xCA;
+                extra[currentSize + 2] = 0;
+                extra[currentSize + 3] = 0;
+            }
+
             // Extra field length
-            final int extraFieldLength = zeroLocalFileHeaders || removeExtra ? 0 : fileHeader.getExtraFieldLength();
             writeShortLE(outputStream, extraFieldLength);
             // File name
             outputStream.write(fileName);
             // Extra field
-            final byte[] extra = zeroLocalFileHeaders || removeExtra ? new byte[] { } : ByteDataUtil.toByteArray(fileHeader.getExtraField());
             outputStream.write(extra);
             // Compressed data
             // TODO This feels wrong?
