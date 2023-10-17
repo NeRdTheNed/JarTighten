@@ -14,7 +14,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-@Command(name = "JarTighten", mixinStandardHelpOptions = true, version = "JarTighten v1.2.10",
+@Command(name = "JarTighten", mixinStandardHelpOptions = true, version = "JarTighten v1.2.11",
          description = "Jar file size optimiser")
 public class CMDMain implements Callable<Integer> {
     @Parameters(index = "0", description = "The file to optimise")
