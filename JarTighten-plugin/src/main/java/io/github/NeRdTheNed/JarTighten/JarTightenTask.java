@@ -170,6 +170,11 @@ public abstract class JarTightenTask extends DefaultTask {
     @Optional
     public abstract Property<Boolean> getMakeExecutableJar();
 
+    /** Try merging deflate blocks. May majorly increase time spent optimising files. */
+    @Input
+    @Optional
+    public abstract Property<Boolean> getMergeBlocks();
+
     /** Optimise a jar file with JarTighten */
     @TaskAction
     public void jarTighten() {
@@ -200,7 +205,8 @@ public abstract class JarTightenTask extends DefaultTask {
         final boolean recompressMultithread = getRecompressMultithread().getOrElse(true);
         final int recompressZopfliPasses = getRecompressZopfliPasses().getOrElse(20);
         final boolean makeExecutableJar = getMakeExecutableJar().getOrElse(false);
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses, makeExecutableJar);
+        final boolean mergeBlocks = getMergeBlocks().getOrElse(false);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses, makeExecutableJar, mergeBlocks);
         final boolean didSucceed;
 
         try {

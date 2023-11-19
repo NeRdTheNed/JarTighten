@@ -92,9 +92,11 @@ public class JarTighten {
     private final int recompressZopfliPasses;
     /** Mark the output jar file as executable on certain operating systems if not already set. Increases file size by 4 bytes. */
     private final boolean makeExecutableJar;
+    /** Try merging deflate blocks. May majorly increase time spent optimising files. */
+    private final boolean mergeBlocks;
 
     /** Creates a JarTighten instance with the given options. */
-    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits, boolean recompressMultithread, int recompressZopfliPasses, boolean makeExecutableJar) {
+    public JarTighten(List<String> excludes, Strategy mode, boolean removeTimestamps, boolean removeFileLength, boolean removeDirEntryLength, boolean removeFileNames, boolean removeEOCDInfo, boolean removeComments, boolean removeExtra, boolean removeDirectoryEntries, boolean deduplicateEntries, boolean recompressZopfli, boolean recompressJZopflii, boolean recompressJZlib, boolean recompressStandard, boolean recompressStore, boolean recursiveStore, boolean sortEntries, boolean zeroLocalFileHeaders, boolean optimiseDeflateStreamExisting, boolean optimiseDeflateStreamRecompress, boolean compareDeflateStreamBits, boolean recompressMultithread, int recompressZopfliPasses, boolean makeExecutableJar, boolean mergeBlocks) {
         this.excludes = excludes;
         this.mode = mode;
         this.removeTimestamps = removeTimestamps;
@@ -117,8 +119,9 @@ public class JarTighten {
         this.optimiseDeflateStreamExisting = optimiseDeflateStreamExisting;
         this.optimiseDeflateStreamRecompress = optimiseDeflateStreamRecompress;
         this.compareDeflateStreamBits = compareDeflateStreamBits;
+        this.mergeBlocks = mergeBlocks;
         recompressDeflate = recompressStandard || recompressZopfli || recompressJZopflii || recompressJZlib ;
-        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, recompressZopfliPasses, mode, optimiseDeflateStreamRecompress, compareDeflateStreamBits);
+        compressionUtil = new CompressionUtil(recompressStandard, recompressJZlib, recompressJZopflii, recompressZopfli, recompressZopfliPasses, mode, optimiseDeflateStreamRecompress, compareDeflateStreamBits, mergeBlocks);
         this.recompressMultithread = recompressMultithread;
         this.recompressZopfliPasses = recompressZopfliPasses;
         this.makeExecutableJar = makeExecutableJar;
@@ -264,7 +267,7 @@ public class JarTighten {
     private CompressionResult findSmallestOutput(byte[] uncompressedData, int crc32, int uncompressedSize, int compressedSize, int compressionMethod, byte[] compressedData, boolean zipLike) {
         if (optimiseDeflateStreamExisting && (compressionMethod == ZipCompressions.DEFLATED)) {
             try {
-                final byte[] optimisedData = Deft.optimiseDeflateStream(compressedData);
+                final byte[] optimisedData = Deft.optimiseDeflateStream(compressedData, mergeBlocks);
                 // TODO Verify data integrity
 
                 if (isCompressedSizeSmaller(optimisedData, compressedData, ZipCompressions.DEFLATED, ZipCompressions.DEFLATED)) {

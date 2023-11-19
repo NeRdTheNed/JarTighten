@@ -29,6 +29,7 @@ public class JarTightenPlugin implements Plugin<Project> {
                 jarTightenTask.getSortEntries().convention(false);
                 jarTightenTask.getZeroLocalFileHeaders().convention(false);
                 jarTightenTask.getMakeExecutableJar().convention(false);
+                jarTightenTask.getMergeBlocks().convention(false);
                 jarTightenTask.getInputFile().convention(jarTask.getArchiveFile());
                 jarTightenTask.getOutputFile().convention(jarTask.getArchiveFile());
             });

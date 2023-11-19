@@ -12,7 +12,7 @@ JarTighten is a jar file size optimiser, including optimisations based on quirks
 JarTighten is available as a command line program:
 
 ```
-Usage: JarTighten [-cdDEhijJlLMnorRsStVxzZ] [--compare-size-bits]
+Usage: JarTighten [-bcdDEhijJlLMnorRsStVxzZ] [--compare-size-bits]
                   [--optimise-existing-streams]
                   [--optimise-recompressed-streams]
                   [-I=<recompressZopfliPasses>] [-m=<mode>] [-e=<filename>]...
@@ -20,6 +20,8 @@ Usage: JarTighten [-cdDEhijJlLMnorRsStVxzZ] [--compare-size-bits]
 Jar file size optimiser
       <inputFile>            The file to optimise
       <outputFile>           The optimised file
+  -b, --merge-blocks         Try merging deflate blocks. May majorly increase
+                               time spent optimising files.
   -c, --remove-comments      Remove file comments and zip comment
       --compare-size-bits    Compare sizes of deflate streams in bits instead
                                of bytes. Majorly increases time spent
@@ -147,6 +149,8 @@ jartighten {
     //compareDeflateStreamBits = true
     // Mark the output jar file as executable on certain operating systems if not already set. Increases file size by 4 bytes.
     //makeExecutableJar = true
+    // Try merging deflate blocks. May majorly increase time spent optimising files.
+    //mergeBlocks = true
 
     // Exclude a file from optimisations which might hide them from standard zip libraries
     //excludes = ["some/package/SomeFile.ext"]

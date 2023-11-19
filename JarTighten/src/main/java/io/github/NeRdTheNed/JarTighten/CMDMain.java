@@ -101,6 +101,9 @@ public class CMDMain implements Callable<Integer> {
     @Option(names = { "--make-executable-jar", "--make-exec", "-x" }, defaultValue = "false", description = "Mark the output jar file as executable on certain operating systems if not already set. Increases file size by 4 bytes.")
     boolean makeExecutableJar = false;
 
+    @Option(names = { "--merge-blocks", "-b" }, defaultValue = "false", description = "Try merging deflate blocks. May majorly increase time spent optimising files.")
+    boolean mergeBlocks = false;
+
     @Override
     public Integer call() throws Exception {
         if (!Files.isRegularFile(inputFile)) {
@@ -111,7 +114,7 @@ public class CMDMain implements Callable<Integer> {
             throw new IllegalArgumentException("Output file name argument " + outputFile.getFileName() + " is already a file!");
         }
 
-        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses, makeExecutableJar);
+        final JarTighten jarTighten = new JarTighten(excludes != null ? excludes : Collections.emptyList(), mode, removeTimestamps, removeFileLength, removeDirEntryLength, removeFileNames, removeEOCDInfo, removeComments, removeExtra, removeDirectoryEntries, deduplicateEntries, recompressZopfli, recompressJZopfli, recompressJZlib, recompressStandard, recompressStore, recursiveStore, sortEntries, zeroLocalFileHeaders, optimiseDeflateStreamExisting, optimiseDeflateStreamRecompress, compareDeflateStreamBits, recompressMultithread, recompressZopfliPasses, makeExecutableJar, mergeBlocks);
         return !jarTighten.optimiseJar(inputFile, outputFile, overwrite) ? 1 : CommandLine.ExitCode.OK;
     }
 
